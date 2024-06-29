@@ -93,3 +93,9 @@ out/
 
 # VS Code
 .vscode/
+
+# Node-Addon-Api
+build/
+
+# Whisper Models
+ggml-base.en.bin
