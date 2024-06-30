@@ -101,7 +101,6 @@ struct whisper_params {
 RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model)
 {
   fprintf(stdout, "initializing whisper\n");
-  // print path_model
   fprintf(stdout, "path_model: %s\n", path_model.c_str());
   ctx = whisper_init_from_file(path_model.c_str());
   fprintf(stdout, "whisper initialized\n");

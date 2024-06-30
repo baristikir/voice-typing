@@ -96,6 +96,3 @@ out/
 
 # Node-Addon-Api
 build/
-
-# Whisper Models
-ggml-base.en.bin
