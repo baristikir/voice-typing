@@ -2,7 +2,7 @@ import { app, BrowserWindow } from "electron";
 import assert from "node:assert";
 import path from "node:path";
 import { registerWhisperIPCHandler } from "./ipc/whisperIPC";
-import { getWhisperModelPath } from "./utils/whisper_model";
+import { getWhisperModelPath } from "./utils/whisperModel";
 
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -19,8 +19,8 @@ if (require("electron-squirrel-startup")) {
 
 const createWindow = () => {
 	const mainWindow = new BrowserWindow({
-		width: 1000,
-		height: 600,
+		width: 1400,
+		height: 800,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.js"),
 		},

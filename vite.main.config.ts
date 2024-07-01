@@ -24,6 +24,7 @@ export default defineConfig((env) => {
 				external,
 			},
 		},
+		publicDir: "public/",
 		plugins: [pluginHotRestart("restart"), pluginTsconfigPaths()],
 		define,
 		resolve: {
