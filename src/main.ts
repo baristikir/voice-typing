@@ -1,7 +1,11 @@
 import { app, BrowserWindow } from "electron";
 import assert from "node:assert";
 import path from "node:path";
+import { registerWhisperIPCHandler } from "./ipc/whisperIPC";
 import { getWhisperModelPath } from "./utils/whisper_model";
+
+// Disable security warnings in devtools
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
 // Import the compiled C++ addon
 const addon = require("bindings")("addon.node");
@@ -36,8 +40,12 @@ const createWindow = () => {
 
 app.whenReady().then(() => {
 	const whisperModelPath = getWhisperModelPath();
-	const whisper = new addon.RealtimeSpeechToTextWhisper(whisperModelPath);
-	assert.strictEqual(typeof whisper, "object");
+	const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
+		whisperModelPath
+	);
+	assert.strictEqual(typeof sttWhisperStreamingModule, "object");
+
+	registerWhisperIPCHandler(sttWhisperStreamingModule);
 
 	createWindow();
 
