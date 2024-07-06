@@ -10,26 +10,49 @@ This is a simple voice typing application that uses the Whisper model to convert
 
 ## Development
 
-Install dependencies:
+> [!IMPORTANT]
+> Important note: The relying node version needs to match the cpu architecture of the device where this application is going to be used.
+
+To ensure the node version matches the cpu architecture, run the following commands and compare the outputs. If they match, you are good to go. If they don't match, you need to install the correct node version for the cpu architecture.
 
 ```bash
-yarn install
+$ arch
+arm64
+
+$ node -e "console.log(process.arch)"
+arm64
 ```
+
+### Install Dependencies + Build Native Modules
+
+Install dependencies with prepration for node-addon-api, which will start the build process for the native modules:
+
+```bash
+$ yarn install
+```
+
+If you want to install dependencies without building the native modules, run the following command:
+
+```bash
+$ yarn install --ignore-scripts
+```
+
+### Manually Build Native Modules (Optional)
 
 Prepare node-addon-api which is used to build the native module:
 
 ```bash
-node-gyp configure
+$ node-gyp configure
 ```
 
 Build the native module:
 
 ```bash
-node-gyp build
+$ node-gyp build
 ```
 
-Run the application:
+### Run the Application
 
 ```bash
-yarn start
+$ yarn start
 ```
