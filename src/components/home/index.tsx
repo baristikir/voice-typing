@@ -25,24 +25,25 @@ type RecorderProcessorMessageData = {
 	sampleRate: number;
 	currentFrame: number;
 };
-const audioContext = new AudioContext({
-	sampleRate: 16_000,
-	//@ts-ignore
-	channelCount: 1,
-	echoCancellation: false,
-	autoGainControl: true,
-	noiseSuppression: true,
-});
 
 const RecordControls = () => {
 	const [isRecording, setIsRecording] = useState(false);
-	const audioRecordRef = useRef<{ disconnect: () => void }>(null);
+	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	const recordAudio = async () => {
 		let stream = navigator.mediaDevices
 			.getUserMedia({ audio: true })
 			.then(async (mediaStream) => {
 				try {
+					const audioContext = new AudioContext({
+						sampleRate: 16_000,
+						//@ts-ignore
+						channelCount: 1,
+						echoCancellation: false,
+						autoGainControl: true,
+						noiseSuppression: true,
+					});
+
 					// window.electronAPI.start();
 					await audioContext.audioWorklet.addModule(
 						"worklet/whisperWorkletProcessor.js"
@@ -80,12 +81,16 @@ const RecordControls = () => {
 					source.connect(worklet);
 					worklet.connect(audioContext.destination);
 
-					return {
-						disconnect: () => {
-							source.disconnect();
-							worklet.disconnect();
-						},
+					const stopRecording = () => {
+						source.disconnect();
+						worklet.disconnect();
+
+						mediaStream.getTracks().forEach((track) => track.stop());
+
+						audioContext.close();
 					};
+
+					return { stopRecording };
 				} catch (error) {
 					console.error("[ recordAudio ] error: ", error);
 				}
@@ -99,7 +104,7 @@ const RecordControls = () => {
 		console.log("[ pauseAudio ] Disconnecting audio worklet.");
 		if (audioRecordRef.current) {
 			console.log("[ pauseAudio ] Ref found.");
-			void audioRecordRef.current.disconnect();
+			void audioRecordRef.current.stopRecording();
 			audioRecordRef.current = null;
 		}
 
@@ -123,25 +128,24 @@ const RecordingTranscriptions = () => {
 	console.log("Transcribing audio...");
 	useEffect(() => {
 		let timer = setInterval(async () => {
-			//@ts-ignore
 			let newTranscriptions = await window.electronAPI.getTranscription();
 			if (!newTranscriptions) return;
 			if (!textContainerRef.current) return;
 
 			// console.log("newTranscriptions: ", newTranscriptions);
-			for (let i = 0; i < newTranscriptions.msgs.length; i++) {
-				const msg = newTranscriptions.msgs[i];
+			for (let i = 0; i < newTranscriptions.segments.length; i++) {
+				const segment = newTranscriptions.segments[i];
 				const lastText = textContainerRef.current?.lastChild as HTMLSpanElement;
 
-				console.log("[ RecordingTranscriptions ] message: ", msg);
+				console.log("[ RecordingTranscriptions ] message: ", segment);
 
 				if (!lastText || lastText.dataset.partial === "false") {
 					const span = document.createElement("span");
-					span.textContent = msg.text;
+					span.textContent = segment.text;
 					span.className =
 						"text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
 
-					if (msg.isPartial === true) {
+					if (segment.isPartial === true) {
 						span.dataset.partial = "true";
 					} else {
 						span.dataset.partial = "false";
@@ -149,8 +153,8 @@ const RecordingTranscriptions = () => {
 
 					textContainerRef.current.appendChild(span);
 				} else {
-					lastText.textContent = msg.text;
-					if (!msg.isPartial) {
+					lastText.textContent = segment.text;
+					if (!segment.isPartial) {
 						lastText.dataset.partial = "false";
 					}
 				}

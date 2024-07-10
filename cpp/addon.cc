@@ -85,24 +85,24 @@ Napi::Value Adapter::AddAudioData(const Napi::CallbackInfo& info)
 
 Napi::Value Adapter::GetTranscription(const Napi::CallbackInfo& info)
 {
-  std::vector<transcribed_msg> msgs;
-  msgs = instance->GetTranscription();
+  std::vector<transcribed_segment> segments;
+  segments = instance->GetTranscription();
   
   Napi::Env env = info.Env();
-  Napi::Array js_msgs = Napi::Array::New(env, msgs.size());
+  Napi::Array js_segments= Napi::Array::New(env, segments.size());
 
-  for (int i = 0; i < (int) msgs.size(); i++) {
-    transcribed_msg msg = msgs[i];
-    Napi::Object js_msg = Napi::Object::New(env);
-    js_msg.Set("text", msg.text);
-    js_msg.Set("isPartial", msg.is_partial);
-    js_msgs.Set(i, js_msg);
+  for (int i = 0; i < (int) segments.size(); i++) {
+    transcribed_segment segment = segments[i];
+    Napi::Object js_segment = Napi::Object::New(env);
+    js_segment.Set("text", segment.text);
+    js_segment.Set("isPartial", segment.is_partial);
+    js_segments.Set(i, js_segment);
   }
 
-  Napi::Object js_all = Napi::Object::New(env);
-  js_all.Set("msgs", js_msgs);
+  Napi::Object js_payload = Napi::Object::New(env);
+  js_payload.Set("segments", js_segments);
 
-  return js_all;
+  return js_payload;
 }
 
 Napi::Value Adapter::Start(const Napi::CallbackInfo& info) 

@@ -160,12 +160,12 @@ void RealtimeSpeechToTextWhisper::AddAudioData(const std::vector<float>& data)
 //    const char * text = whisper_full_get_token_text(ctx, i, j);
 //    const float  prob = whisper_full_get_token_p(ctx, i, j);
 // Draft end ---
-std::vector<transcribed_msg> RealtimeSpeechToTextWhisper::GetTranscription()
+std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::GetTranscription()
 {
-  std::vector<transcribed_msg> transcribed;
+  std::vector<transcribed_segment> transcribed;
   std::lock_guard<std::mutex> lock(s_mutex);
-  transcribed = std::move(s_transcribed_msgs);
-  s_transcribed_msgs.clear();
+  transcribed = std::move(s_transcribed_segments);
+  s_transcribed_segments.clear();
   return transcribed;
 }
 
@@ -274,12 +274,12 @@ void RealtimeSpeechToTextWhisper::Run()
     }
 
     {
-      transcribed_msg msg;
+      transcribed_segment segment;
 
       const int n_segments = whisper_full_n_segments(ctx);
       for (int i = 0; i < n_segments; ++i) {
         const char* text = whisper_full_get_segment_text(ctx, i);
-        msg.text += text;
+        segment.text += text;
       }
 
       /**
@@ -307,7 +307,7 @@ void RealtimeSpeechToTextWhisper::Run()
         printf("iter took: %ldms\n", t_diff);
         t_last_iter = t_now;
 
-        msg.is_partial = false;
+        segment.is_partial = false;
         /**
          * Keep the last few samples in the audio buffer, so the next
          * iteration has a smoother start.
@@ -315,11 +315,11 @@ void RealtimeSpeechToTextWhisper::Run()
         std::vector<float> last(pcmf32.end() - n_samples_keep_iter, pcmf32.end());
         pcmf32 = std::move(last);
       } else {
-        msg.is_partial = true;
+        segment.is_partial = true;
       }
 
       std::lock_guard<std::mutex> lock(s_mutex);
-      s_transcribed_msgs.insert(s_transcribed_msgs.end(), std::move(msg));
+      s_transcribed_segments.insert(s_transcribed_segments.end(), std::move(segment));
     }
   }
 }

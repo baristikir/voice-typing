@@ -12,6 +12,7 @@
 		"outDir": "dist",
 		"moduleResolution": "node",
 		"resolveJsonModule": true,
+		"types": ["./src/renderer.d.ts"],
 		"paths": {
 			"@/*": ["src/*"]
 		}
