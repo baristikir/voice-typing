@@ -21,6 +21,9 @@ const createWindow = () => {
 	const mainWindow = new BrowserWindow({
 		width: 1400,
 		height: 800,
+		titleBarStyle: "hiddenInset",
+		titleBarOverlay: true,
+		movable: true,
 		webPreferences: {
 			preload: path.join(__dirname, "preload.js"),
 		},
@@ -39,7 +42,7 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-	const whisperModelPath = getWhisperModelPath();
+	const whisperModelPath = getWhisperModelPath("base");
 	const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
 		whisperModelPath
 	);

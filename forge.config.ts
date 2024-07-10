@@ -10,7 +10,13 @@ import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-nati
 
 const config: ForgeConfig = {
 	packagerConfig: {
-		asar: true,
+		asar: {
+			unpack: "*.{node,dll}",
+		},
+		extendInfo: {
+			"com.apple.security.device.audio-input": true,
+			NSMicrophoneUsageDescription: "This app needs access to the microphone",
+		},
 	},
 	rebuildConfig: {},
 	makers: [

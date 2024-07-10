@@ -17,6 +17,8 @@ class RealtimeSpeechToTextWhisper
  public:
   RealtimeSpeechToTextWhisper(const std::string& path_model);
   ~RealtimeSpeechToTextWhisper();
+  void Start(RealtimeSpeechToTextWhisper* self);
+  void Stop(RealtimeSpeechToTextWhisper* self);
   void AddAudioData(const std::vector<float>& new_data);
   std::vector<transcribed_msg> GetTranscription();
 

@@ -14,8 +14,10 @@ class Adapter : public Napi::ObjectWrap<Adapter>
 
  private:
   RealtimeSpeechToTextWhisper* instance;
+  Napi::Value Start(const Napi::CallbackInfo& info);
+  Napi::Value Stop(const Napi::CallbackInfo& info);
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
-  Napi::Value GetTranscribed(const Napi::CallbackInfo& info);
+  Napi::Value GetTranscription(const Napi::CallbackInfo& info);
   void Destroy(const Napi::CallbackInfo& info);
 };
 
@@ -24,8 +26,10 @@ Napi::Object Adapter::Init(Napi::Env env, Napi::Object exports)
   Napi::Function func = DefineClass(
       env,
       "RealtimeSpeechToTextWhisper",
-      {InstanceMethod<&Adapter::AddAudioData>("addAudioData"),
-       InstanceMethod<&Adapter::GetTranscribed>("getTranscribed"),
+      {InstanceMethod<&Adapter::Start>("start"),
+       InstanceMethod<&Adapter::Stop>("stop"),
+       InstanceMethod<&Adapter::AddAudioData>("addAudioData"),
+       InstanceMethod<&Adapter::GetTranscription>("getTranscription"),
        InstanceMethod<&Adapter::Destroy>("destroy")});
 
   Napi::FunctionReference* constructor = new Napi::FunctionReference();
@@ -79,7 +83,7 @@ Napi::Value Adapter::AddAudioData(const Napi::CallbackInfo& info)
   return Napi::Number::New(info.Env(), 0);
 }
 
-Napi::Value Adapter::GetTranscribed(const Napi::CallbackInfo& info)
+Napi::Value Adapter::GetTranscription(const Napi::CallbackInfo& info)
 {
   std::vector<transcribed_msg> msgs;
   msgs = instance->GetTranscription();
@@ -99,6 +103,34 @@ Napi::Value Adapter::GetTranscribed(const Napi::CallbackInfo& info)
   js_all.Set("msgs", js_msgs);
 
   return js_all;
+}
+
+Napi::Value Adapter::Start(const Napi::CallbackInfo& info) 
+{
+  try
+  {
+    instance->Start(instance);
+  }
+  catch(const std::exception& e)
+  {
+    return Napi::Number::New(info.Env(), 0);
+  }
+  
+  return Napi::Number::New(info.Env(), 1);
+}
+
+Napi::Value Adapter::Stop(const Napi::CallbackInfo& info) 
+{
+  try
+  {
+    instance->Stop(instance);
+  }
+  catch(const std::exception& e)
+  {
+    return Napi::Number::New(info.Env(), 0);
+  }
+  
+  return Napi::Number::New(info.Env(), 1);
 }
 
 /**

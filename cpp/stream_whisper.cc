@@ -93,8 +93,8 @@ struct whisper_params {
     bool use_gpu       = false;
     bool flash_attn    = false;
 
-    std::string language  = "en";
-    std::string model     = "models/ggml-base.en.bin";
+    std::string language  = "de";
+    std::string model     = "models/ggml-base.bin";
     std::string fname_out;
 };
 
@@ -105,8 +105,21 @@ RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path
   ctx = whisper_init_from_file(path_model.c_str());
   fprintf(stdout, "whisper initialized\n");
   is_running = true;
-  // worker = std::thread(&RealtimeSpeechToTextWhisper::Run, this);
-  // t_last_iter = std::chrono::high_resolution_clock::now();
+  worker = std::thread(&RealtimeSpeechToTextWhisper::Run, this);
+  t_last_iter = std::chrono::high_resolution_clock::now();
+}
+
+void RealtimeSpeechToTextWhisper::Start(RealtimeSpeechToTextWhisper* self)
+{
+  self->is_running = true;
+  self->worker = std::thread(&RealtimeSpeechToTextWhisper::Run, self);
+  self->t_last_iter = std::chrono::high_resolution_clock::now();
+}
+
+void RealtimeSpeechToTextWhisper::Stop(RealtimeSpeechToTextWhisper* self)
+{
+  self->is_running = false;
+  self->worker.join();
 }
 
 RealtimeSpeechToTextWhisper::~RealtimeSpeechToTextWhisper()
@@ -125,7 +138,28 @@ void RealtimeSpeechToTextWhisper::AddAudioData(const std::vector<float>& data)
   s_queued_pcmf32.insert(s_queued_pcmf32.end(), data.begin(), data.end());
 }
 
-/** Get newly transcribed text. */
+// Get newly transcribed text.
+//
+// ---
+// Draft:
+// Extend this with more information about each segment from the text, including
+// timestamp informations and confidence scores.
+//
+// Example data structure: 
+// struct SegmentBounds {
+//   std::size_t char_start;
+//   std::size_t char_end;
+//   float time_start;
+//   float time_end;
+//   float confidence;
+// };
+//
+// How to get segment details from the whisper state:
+// for i -> whisper_full_n_segments(ctx)
+//  for j -> whisper_full_n_tokens(ctx, i) 
+//    const char * text = whisper_full_get_token_text(ctx, i, j);
+//    const float  prob = whisper_full_get_token_p(ctx, i, j);
+// Draft end ---
 std::vector<transcribed_msg> RealtimeSpeechToTextWhisper::GetTranscription()
 {
   std::vector<transcribed_msg> transcribed;
@@ -149,7 +183,7 @@ void RealtimeSpeechToTextWhisper::Run()
   wparams.print_special = false;
   wparams.print_timestamps = false;
   wparams.max_tokens = 64;
-  wparams.language = "en";
+  wparams.language = "de";
   wparams.translate = false;
 
   /**

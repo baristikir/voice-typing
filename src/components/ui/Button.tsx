@@ -8,13 +8,15 @@ export const buttonVariants = cva(
 	{
 		variants: {
 			variant: {
-				default: "bg-gray-900 text-white drop-shadow-sm md:drop-shadow-lg",
+				default: "bg-neutral-800 text-white drop-shadow-sm md:drop-shadow-lg",
 				secondary: "bg-gray-300 text-gray-900 drop-shadow-sm",
+				outline:
+					"bg-white border border-gray-500/20 text-black drop-shadow-sm hover:bg-gray-300",
 				ghost: "hover:bg-gray-200 bg-transparent text-gray-900",
 				destructive: "bg-red-800 text-white drop-shadow-sm",
 			},
 			size: {
-				default: "h-10 px-4 py-2 text-sm rounded-lg",
+				default: "h-9 px-4 py-2 text-sm font-normal rounded-xl",
 				combobox: "h-9 lg:h-10 xl:h-11 px-4 py-2 text-sm rounded-lg",
 				sm: "h-9 px-3 text-xs",
 				icon: "h-9 w-9 lg:h-10 lg:w-10 xl:w-10 xl:h-11",
