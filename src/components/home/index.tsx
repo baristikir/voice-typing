@@ -1,170 +1,90 @@
-import { useEffect, useRef, useState } from "react";
+import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { Button } from "../ui/Button";
-import { assert } from "../utils/assert";
-import { TitleWithInput } from "./TitleWithInput";
+import { Link } from "react-router-dom";
+
+const testDescription =
+	"Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsam animi, eum provident est omnis ea doloribus repellat. Libero soluta delectus perspiciatis, incidunt, illo hic dolorem, eligendi animi optio eum facilis.";
 
 interface Props {}
 export function HomeContent(props: Props) {
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
-			<div className="flex items-center justify-between w-full">
-				<TitleWithInput />
-				<RecordControls />
+			<div className="flex items-start justify-between w-full">
+				<div className="flex flex-col gap-2">
+					<h1 className="text-4xl font-semibold">Übersicht</h1>
+					<div className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500">
+						<MagnifyingGlass className="w-4 h-4 mr-2" />
+						Skript suchen..
+					</div>
+				</div>
+
+				<div>
+					<Button variant="default">
+						<Gear weight="fill" className="w-4 h-4 mr-1" />
+						Einstellungen
+					</Button>
+				</div>
 			</div>
-			<div>
-				<RecordingTranscriptions />
+
+			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
+				<CreateNewDictation />
+				<DictationCard
+					title="Test Skript #1"
+					shortDescription={
+						testDescription.substring(0, 100) +
+						(testDescription.length > 100 ? "..." : "")
+					}
+					lastEdited="Vor 2 Tagen"
+				/>
+				<DictationCard
+					title="Test Skript #2"
+					shortDescription={
+						testDescription.substring(0, 100) +
+						(testDescription.length > 100 ? "..." : "")
+					}
+					lastEdited="Vor 7 Tagen"
+				/>
 			</div>
 		</div>
 	);
 }
 
-// ------------------------------
-// Audio Recording
-type RecorderProcessorMessageData = {
-	recordBuffer: Float32Array[];
-	sampleRate: number;
-	currentFrame: number;
-};
-
-const RecordControls = () => {
-	const [isRecording, setIsRecording] = useState(false);
-	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
-
-	const recordAudio = async () => {
-		let stream = navigator.mediaDevices
-			.getUserMedia({ audio: true })
-			.then(async (mediaStream) => {
-				try {
-					const audioContext = new AudioContext({
-						sampleRate: 16_000,
-						//@ts-ignore
-						channelCount: 1,
-						echoCancellation: false,
-						autoGainControl: true,
-						noiseSuppression: true,
-					});
-
-					// window.electronAPI.start();
-					await audioContext.audioWorklet.addModule(
-						"worklet/whisperWorkletProcessor.js"
-					);
-
-					const source = new MediaStreamAudioSourceNode(audioContext, {
-						mediaStream,
-					});
-
-					const worklet = new AudioWorkletNode(
-						audioContext,
-						"recorder-processor",
-						{
-							processorOptions: {
-								channelCount: 1,
-								reportSize: 3072,
-							},
-						}
-					);
-
-					worklet.onprocessorerror = console.trace;
-					worklet.port.onmessage = async (event) => {
-						assert.strictEqual(typeof event.data, "object");
-						assert("recordBuffer" in event.data);
-						assert("sampleRate" in event.data);
-						assert("currentFrame" in event.data);
-
-						const { recordBuffer, sampleRate, currentFrame } =
-							event.data as RecorderProcessorMessageData;
-
-						if (recordBuffer[0].length === 0) return;
-						//@ts-ignore
-						window.electronAPI.addAudioData(recordBuffer[0]);
-					};
-					source.connect(worklet);
-					worklet.connect(audioContext.destination);
-
-					const stopRecording = () => {
-						source.disconnect();
-						worklet.disconnect();
-
-						mediaStream.getTracks().forEach((track) => track.stop());
-
-						audioContext.close();
-					};
-
-					return { stopRecording };
-				} catch (error) {
-					console.error("[ recordAudio ] error: ", error);
-				}
-			});
-
-		audioRecordRef.current = await stream;
-		setIsRecording(true);
-	};
-
-	const pauseAudio = () => {
-		console.log("[ pauseAudio ] Disconnecting audio worklet.");
-		if (audioRecordRef.current) {
-			console.log("[ pauseAudio ] Ref found.");
-			void audioRecordRef.current.stopRecording();
-			audioRecordRef.current = null;
-		}
-
-		setIsRecording(false);
-	};
-
+const CreateNewDictation = () => {
 	return (
-		<div className="flex">
-			{isRecording === false ? (
-				<Button onClick={recordAudio}>Record Audio</Button>
-			) : (
-				<Button onClick={pauseAudio}>Pause Audio</Button>
-			)}
-		</div>
+		<Link
+			to={"/new-dictation"}
+			className="h-64 w-full col-span-1 flex flex-col items-center justify-center p-6 gap-4 border bg-gray-50 shadow-sm rounded-2xl text-gray-500 hover:bg-gray-100 transition-colors duration-100"
+		>
+			<Plus weight="bold" className="w-5 h-5" />
+			<h3 className="font-normal text-lg text-center">
+				Neue Diktieraufnahme beginnen
+			</h3>
+		</Link>
 	);
 };
 
-const RecordingTranscriptions = () => {
-	const textContainerRef = useRef<HTMLDivElement>(null);
+interface DictationCardProps {
+	title: string;
+	// max 14 words
+	shortDescription: string;
+	lastEdited: string;
+}
+const DictationCard = (props: DictationCardProps) => {
+	return (
+		<div className="h-64 col-span-1 flex flex-col items-start justify-between border rounded-2xl bg-white px-4 pt-6 pb-4 gap-2 shadow-sm">
+			<div className="flex flex-col items-start">
+				<h3 className="text-2xl font-semibold">{props.title}</h3>
+				<span className="text-gray-700">{props.shortDescription}</span>
+			</div>
 
-	console.log("Transcribing audio...");
-	useEffect(() => {
-		let timer = setInterval(async () => {
-			let newTranscriptions = await window.electronAPI.getTranscription();
-			if (!newTranscriptions) return;
-			if (!textContainerRef.current) return;
-
-			// console.log("newTranscriptions: ", newTranscriptions);
-			for (let i = 0; i < newTranscriptions.segments.length; i++) {
-				const segment = newTranscriptions.segments[i];
-				const lastText = textContainerRef.current?.lastChild as HTMLSpanElement;
-
-				console.log("[ RecordingTranscriptions ] message: ", segment);
-
-				if (!lastText || lastText.dataset.partial === "false") {
-					const span = document.createElement("span");
-					span.textContent = segment.text;
-					span.className =
-						"text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-
-					if (segment.isPartial === true) {
-						span.dataset.partial = "true";
-					} else {
-						span.dataset.partial = "false";
-					}
-
-					textContainerRef.current.appendChild(span);
-				} else {
-					lastText.textContent = segment.text;
-					if (!segment.isPartial) {
-						lastText.dataset.partial = "false";
-					}
-				}
-			}
-		}, 300);
-
-		return () => {
-			clearInterval(timer);
-		};
-	}, []);
-
-	return <div ref={textContainerRef}></div>;
+			<div className="flex flex-col items-start gap-1">
+				<span className="text-gray-500 text-sm">Zuletzt bearbeitet</span>
+				<div className="flex items-start bg-gray-100 rounded-lg px-1.5 py-0.5 justify-center shrink-0">
+					<span className="text-gray-600 text-sm font-medium ">
+						{props.lastEdited}
+					</span>
+				</div>
+			</div>
+		</div>
+	);
 };
