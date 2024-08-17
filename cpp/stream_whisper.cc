@@ -17,6 +17,7 @@ void print_array(const std::vector<float>& data)
   fprintf(stdout, " ]\n");
 }
 
+/* Source from https://github.com/ggerganov/whisper.cpp/blob/22fcd5fd110ba1ff592b4e23013d870831756259/examples/common.cpp#L750C1-L750C5 */
 void high_pass_filter(std::vector<float>& data, float cutoff, float sample_rate)
 {
   const float rc = 1.0f / (2.0f * M_PI * cutoff);
@@ -31,7 +32,8 @@ void high_pass_filter(std::vector<float>& data, float cutoff, float sample_rate)
   }
 }
 
-/** Check if speech is ending. */
+/* Source from https://github.com/ggerganov/whisper.cpp/blob/22fcd5fd110ba1ff592b4e23013d870831756259/examples/common.cpp#L763 */
+/* Simple implementation for Voice Activity Detection and mostly used for detecting when a speech has ended. */
 bool vad_simple(std::vector<float>& pcmf32, int sample_rate, int last_ms, float vad_thold, float freq_thold, bool verbose)
 {
   const int n_samples = pcmf32.size();
