@@ -18,7 +18,7 @@ export const buttonVariants = cva(
 			size: {
 				default: "h-9 px-4 py-2 text-sm font-normal rounded-xl",
 				combobox: "h-9 lg:h-10 xl:h-11 px-4 py-2 text-sm rounded-lg",
-				sm: "h-9 px-3 text-xs",
+				sm: "h-9 px-3 text-xs rounded-lg",
 				icon: "h-9 w-9 lg:h-10 lg:w-10 xl:w-10 xl:h-11",
 			},
 		},
@@ -31,7 +31,7 @@ export const buttonVariants = cva(
 
 export interface ButtonProps
 	extends ButtonHTMLAttributes<HTMLButtonElement>,
-		VariantProps<typeof buttonVariants> {
+	VariantProps<typeof buttonVariants> {
 	isLoading?: boolean;
 }
 

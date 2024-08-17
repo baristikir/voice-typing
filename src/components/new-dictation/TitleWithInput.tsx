@@ -35,7 +35,7 @@ export const TitleWithInput = () => {
 					"text-3xl font-semibold text-gray-950",
 					{
 						"text-gray-400": title === DEFAULT_TITLE,
-					}
+					},
 				)}
 				value={title}
 				onChange={handleTitleChange}
