@@ -1,6 +1,39 @@
 # Voice Typing
 
-This is a simple voice typing application that uses the Whisper model to convert speech to text. The application is built using Electron.
+This is a simple voice typing application that uses the Whisper model to convert
+speech to text. The application is built using Electron.
+
+# TO-DOs
+
+- Editor:
+- [x] Insert text (transcripts) programmatically
+- [ ] Different editor states to derive content editable state
+  - [ ] Dictate Mode
+  - [ ] Edit Mode
+  - [ ] Selection Mode
+- [x] Make content editable
+- [x] Get selection in editor
+- [x] Paste into selection programmatically
+  - [ ] Scroll down to latest insertion (Dictation Mode)
+- [ ] Put cursor position after insertion
+- [x] Formatting Elements
+  - [x] Text
+  - [x] Headline
+  - [x] Empty Paragraphs
+- [ ] Search for texts inside editor
+- [ ] Replace previous searched instance with words
+- Dictation:
+- [x] Capture audio input from microphone
+- [x] Transcribe audio segments and return to JS thread
+- [ ] Pause / Resume transcription
+  - [ ] Clear whisper state
+- [ ] Controls
+  - [ ] Push to talk -> Configurable keyboard shortcuts
+  - [ ] Toggle to talk
+- Voice Commands:
+- [ ] Convert formatting elements into voice commands
+- [ ] Convert search into voice command
+- [ ] Convert replace into voice command
 
 ## Requirements
 
@@ -10,10 +43,13 @@ This is a simple voice typing application that uses the Whisper model to convert
 
 ## Development
 
-> [!IMPORTANT]
-> Important note: The relying node version needs to match the cpu architecture of the device where this application is going to be used.
+> [!IMPORTANT] Important note: The relying node version needs to match the cpu
+> architecture of the device where this application is going to be used.
 
-To ensure the node version matches the cpu architecture, run the following commands and compare the outputs. If they match, you are good to go. If they don't match, you need to install the correct node version for the cpu architecture.
+To ensure the node version matches the cpu architecture, run the following
+commands and compare the outputs. If they match, you are good to go. If they
+don't match, you need to install the correct node version for the cpu
+architecture.
 
 ```bash
 $ arch
@@ -25,13 +61,15 @@ arm64
 
 ### Install Dependencies + Build Native Modules
 
-Install dependencies with prepration for node-addon-api, which will start the build process for the native modules:
+Install dependencies with prepration for node-addon-api, which will start the
+build process for the native modules:
 
 ```bash
 $ yarn install
 ```
 
-If you want to install dependencies without building the native modules, run the following command:
+If you want to install dependencies without building the native modules, run the
+following command:
 
 ```bash
 $ yarn install --ignore-scripts
