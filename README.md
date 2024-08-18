@@ -9,8 +9,8 @@ speech to text. The application is built using Electron.
 - [x] Insert text (transcripts) programmatically
 - [ ] Different editor states to derive content editable state
   - [ ] Dictate Mode
-  - [ ] Edit Mode
-  - [ ] Selection Mode
+  - [x] Edit Mode
+  - [x] Selection Mode
 - [x] Make content editable
 - [x] Get selection in editor
 - [x] Paste into selection programmatically
@@ -22,6 +22,8 @@ speech to text. The application is built using Electron.
   - [x] Empty Paragraphs
 - [ ] Search for texts inside editor
 - [ ] Replace previous searched instance with words
+- [x] Copy content to clipboard
+- [ ] Export content as PDF
 - Dictation:
 - [x] Capture audio input from microphone
 - [x] Transcribe audio segments and return to JS thread

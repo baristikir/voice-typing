@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { Button } from "../ui/Button";
 import {
 	ArticleNyTimes,
+	Clipboard,
 	CursorText,
 	Paragraph,
 	Pause,
@@ -17,15 +18,15 @@ async function getLatestTranscription() {
 	return newTranscription;
 }
 
-function createSpanText(textContent: string, isPartial: boolean) {
-	const span = document.createElement("span");
-	span.textContent = " " + textContent;
-	span.id = `segment-${new Date().getTime()}`;
-	span.className =
+function createParagraphText(textContent: string, isPartial: boolean) {
+	const paragraph = document.createElement("p");
+	paragraph.textContent = " " + textContent;
+	paragraph.id = `segment-${new Date().getTime()}`;
+	paragraph.className =
 		"text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-	span.dataset.partial = `${isPartial}`;
+	paragraph.dataset.partial = `${isPartial}`;
 
-	return span;
+	return paragraph;
 }
 function createHeadline1(textContent: string) {
 	const h1 = document.createElement("h1");
@@ -70,7 +71,7 @@ export const RecordingTranscriptions = (_: Props) => {
 			let newTranscriptions = await getLatestTranscription();
 			if (!newTranscriptions) return;
 			insertTranscripts(newTranscriptions);
-		}, 1000);
+		}, TRANSCRIPTION_RATE_IN_MS);
 
 		if (editorState !== EditorState.DICTATING) {
 			clearInterval(timer);
@@ -85,8 +86,11 @@ export const RecordingTranscriptions = (_: Props) => {
 	// Register Selection Listeners
 	useEffect(() => {
 		const checkSelection = (_: Event) => {
+			const selection = window.getSelection();
 			const range = window.getSelection().rangeCount;
-			if (range < 0) return;
+			if (range < 0 || selection.isCollapsed) {
+				setEditorState(EditorState.EDITING);
+			}
 
 			const rangeAt = window.getSelection()?.getRangeAt(0);
 
@@ -117,8 +121,32 @@ export const RecordingTranscriptions = (_: Props) => {
 			insertTextContent: (text: string) => {
 				// insert new text content into selected range
 				const textNode = document.createTextNode(text);
-				range.insertNode(textNode);
-				// reset cursor selection
+
+				const startContainer = range.startContainer;
+				const endContainer = range.endContainer;
+				const commonAnchestor = range.commonAncestorContainer;
+
+				let targetNode: Node;
+
+				if (
+					commonAnchestor.nodeType === Node.ELEMENT_NODE &&
+					(commonAnchestor as any).tagName === "P" &&
+					startContainer === commonAnchestor.firstChild &&
+					endContainer === commonAnchestor.lastChild
+				) {
+					targetNode = commonAnchestor;
+					range.deleteContents();
+				} else {
+					targetNode = startContainer;
+					range.deleteContents();
+				}
+
+				if (targetNode.nodeType === Node.TEXT_NODE) {
+					targetNode.parentNode.insertBefore(textNode, targetNode);
+				} else {
+					targetNode.appendChild(textNode);
+				}
+
 				range.setStartAfter(textNode);
 				range.setEndAfter(textNode);
 				selection.removeAllRanges();
@@ -138,23 +166,21 @@ export const RecordingTranscriptions = (_: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		const br1 = createLineBreak();
-		const br2 = createLineBreak();
-		br1.dataset.partial = "false";
-		br2.dataset.partial = "false";
-		textContainer.appendChild(br1);
-		textContainer.appendChild(br2);
+		const br = createLineBreak();
+		textContainer.appendChild(br);
 	};
 
 	const insertHeadline = (textContent: string) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		const br = createLineBreak();
+		const br1 = createLineBreak();
+		const br2 = createLineBreak();
 		const h1 = createHeadline1(textContent);
 
+		textContainer.appendChild(br1);
 		textContainer.appendChild(h1);
-		textContainer.appendChild(br);
+		textContainer.appendChild(br2);
 	};
 
 	const insertTranscripts = (
@@ -167,11 +193,11 @@ export const RecordingTranscriptions = (_: Props) => {
 			if (!textContainer) return;
 
 			const segment = newTranscriptions.segments[i];
-			const lastText = textContainer.lastChild as HTMLSpanElement;
+			const lastText = textContainer.lastChild as HTMLParagraphElement;
 
 			if (!lastText || lastText.dataset.partial === "false") {
-				const span = createSpanText(segment.text, segment.isPartial);
-				textContainerRef.current.appendChild(span);
+				const paragraph = createParagraphText(segment.text, segment.isPartial);
+				textContainerRef.current.appendChild(paragraph);
 			} else {
 				lastText.textContent = segment.text;
 				if (!segment.isPartial) {
@@ -179,6 +205,39 @@ export const RecordingTranscriptions = (_: Props) => {
 				}
 			}
 		}
+	};
+
+	const copyTextContentsToClipboard = () => {
+		if (!textContainerRef.current) return;
+
+		const textContainerChildren = textContainerRef.current.children;
+		const texts: string[] = [];
+
+		Array.from(textContainerChildren).forEach((child, index) => {
+			const { tagName, textContent } = child;
+			const prevChild = textContainerChildren[index - 1];
+
+			if (tagName === "H1") {
+				texts.push(textContent);
+				return;
+			}
+
+			if (tagName === "BR") {
+				texts.push(" ");
+				return;
+			}
+
+			if (tagName === "P") {
+				if (!prevChild || prevChild.tagName !== "P") {
+					texts.push(textContent);
+				} else {
+					texts[texts.length - 1] += textContent;
+				}
+			}
+		});
+
+		const text = texts.join("\n");
+		navigator.clipboard.writeText(text);
 	};
 
 	const pauseDictation = () => {
@@ -213,8 +272,10 @@ export const RecordingTranscriptions = (_: Props) => {
 			</div>
 			<div className="flex flex-col gap-2">
 				<TestSimulationControls
+					editorState={editorState}
 					pauseSimulation={pauseDictation}
 					resumeSimulation={resumeDictation}
+					exportToClipboard={copyTextContentsToClipboard}
 					insertIntoSelection={insertIntoSelection}
 					insertParagraph={insertParagraph}
 					insertHeadline={insertHeadline}
@@ -230,47 +291,78 @@ export const RecordingTranscriptions = (_: Props) => {
 
 // DEVELOPMENT ONLY
 const TestSimulationControls = ({
+	editorState,
 	resumeSimulation,
 	pauseSimulation,
+	exportToClipboard,
 	insertIntoSelection,
 	insertParagraph,
 	insertHeadline,
 }: {
+	editorState: EditorState;
 	resumeSimulation(): void;
 	pauseSimulation(): void;
+	exportToClipboard: () => void;
 	insertIntoSelection: (text: string) => void;
 	insertParagraph: () => void;
 	insertHeadline: (text: string) => void;
 }) => {
 	return (
 		<div className="flex items-center gap-2">
-			<Button size="sm" variant="outline" onClick={pauseSimulation}>
+			<Button
+				size="sm"
+				variant="outline"
+				disabled={editorState !== EditorState.DICTATING}
+				onClick={pauseSimulation}
+			>
 				<Pause className="mr-2" weight="duotone" />
 				Pause
 			</Button>
-			<Button size="sm" variant="outline" onClick={resumeSimulation}>
+			<Button
+				size="sm"
+				variant="outline"
+				disabled={editorState === EditorState.DICTATING}
+				onClick={resumeSimulation}
+			>
 				<Play className="mr-2" weight="duotone" />
 				Resume
 			</Button>
 			<Button
 				size="sm"
 				variant="outline"
+				disabled={editorState === EditorState.DICTATING}
 				onClick={() => insertIntoSelection("Text")}
 			>
 				<CursorText className="mr-2" weight="regular" />
 				Insert Text
 			</Button>
-			<Button size="sm" variant="outline" onClick={insertParagraph}>
+			<Button
+				size="sm"
+				variant="outline"
+				disabled={editorState === EditorState.DICTATING}
+				onClick={insertParagraph}
+			>
 				<Paragraph className="mr-2" weight="regular" />
 				Insert Paragraph
 			</Button>
 			<Button
 				size="sm"
 				variant="outline"
+				disabled={editorState === EditorState.DICTATING}
 				onClick={() => insertHeadline("Some Title")}
 			>
 				<ArticleNyTimes className="mr-2" weight="regular" />
 				Insert Headline
+			</Button>
+
+			<Button
+				size="sm"
+				variant="outline"
+				disabled={editorState === EditorState.DICTATING}
+				onClick={exportToClipboard}
+			>
+				<Clipboard className="mr-2" weight="regular" />
+				Copy to Clipboard
 			</Button>
 		</div>
 	);
@@ -291,20 +383,23 @@ const Simulation = {
 		currentIteration: number,
 	) {
 		const lastChild = textContainer.lastChild;
-		const isSpanElement = lastChild?.nodeName === "SPAN";
+		const isParagraphElement = lastChild?.nodeName === "P";
 		const isBrElement = lastChild?.nodeName === "BR";
 		const isPartial =
-			(lastChild as HTMLSpanElement)?.dataset.partial === "false";
+			(lastChild as HTMLParagraphElement)?.dataset.partial === "false";
 
-		if (!lastChild || isBrElement || (isSpanElement && isPartial)) {
+		if (!lastChild || isBrElement || (isParagraphElement && isPartial)) {
 			const segment = this.testSegments[currentIteration % 5];
-			const span = createSpanText(segment, currentIteration % 5 !== 0);
-			textContainer.appendChild(span);
-		} else if (lastChild && isSpanElement) {
+			const paragraph = createParagraphText(
+				segment,
+				currentIteration % 5 !== 0,
+			);
+			textContainer.appendChild(paragraph);
+		} else if (lastChild && isParagraphElement) {
 			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
 
 			if (currentIteration % 5 === 0) {
-				(lastChild as HTMLSpanElement).dataset.partial = "false";
+				(lastChild as HTMLParagraphElement).dataset.partial = "false";
 			}
 		}
 	},
