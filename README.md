@@ -7,8 +7,8 @@ speech to text. The application is built using Electron.
 
 - Editor:
 - [x] Insert text (transcripts) programmatically
-- [ ] Different editor states to derive content editable state
-  - [ ] Dictate Mode
+- [x] Different editor states to derive content editable state
+  - [x] Dictate Mode
   - [x] Edit Mode
   - [x] Selection Mode
 - [x] Make content editable
@@ -24,6 +24,7 @@ speech to text. The application is built using Electron.
 - [ ] Replace previous searched instance with words
 - [x] Copy content to clipboard
 - [ ] Export content as PDF
+- [ ] Autosave text contents to DB
 - Dictation:
 - [x] Capture audio input from microphone
 - [x] Transcribe audio segments and return to JS thread
@@ -36,6 +37,15 @@ speech to text. The application is built using Electron.
 - [ ] Convert formatting elements into voice commands
 - [ ] Convert search into voice command
 - [ ] Convert replace into voice command
+- Database:
+- [ ] Setup SQLite DB
+- [ ] Create tables
+- [ ] Add IPC handlers
+- Settings:
+- [ ] Configurable dictation (toggle or push-to-talk)
+- [ ] Customizable keyboard shortcuts
+  - [ ] Dictationmode Shortcut (either for toggling or push-to-talk)
+  - [ ] Editmode Shortcut
 
 ## Requirements
 
