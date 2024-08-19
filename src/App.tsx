@@ -2,15 +2,13 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HomeRoute } from "./app/home";
 import { NewDictationRoute } from "./app/new-dictation";
 import { ProjectRoute } from "./app/project";
-import { Button } from "./components/ui/Button";
-import { Gear } from "@phosphor-icons/react";
 
 export default function App() {
 	// useRendererListener(MenuChannels.MENU_EVENT, onMenuEvent);
 	// useThemeListener();
 
 	return (
-		<MemoryRouter initialEntries={["/new-dictation"]}>
+		<MemoryRouter initialEntries={["/"]}>
 			<div className="w-full relative h-full flex items-start justify-start min-h-screen drag">
 				{/* <div className="flex flex-col items-start justify-start w-60 bg-gray-50 border-r border-gray-400/20 h-full fixed py-12 px-4 space-y-6">
 					<div className="inline-flex w-full no-drag">
@@ -38,8 +36,8 @@ export default function App() {
 				</div> */}
 				<div className="py-16 px-8 w-full h-full no-drag">
 					<Routes>
-						<Route path="/" Component={HomeRoute} />
-						<Route index path="/new-dictation" Component={NewDictationRoute} />
+						<Route index path="/" Component={HomeRoute} />
+						<Route path="/new-dictation" Component={NewDictationRoute} />
 						<Route path="/projects/:project_id" Component={ProjectRoute} />
 					</Routes>
 				</div>

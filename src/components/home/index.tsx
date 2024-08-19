@@ -1,12 +1,37 @@
 import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { Button } from "../ui/Button";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import dayjs from "../utils/dayjs";
 
-const testDescription =
-	"Lorem ipsum dolor sit amet consectetur adipisicing elit. Ipsam animi, eum provident est omnis ea doloribus repellat. Libero soluta delectus perspiciatis, incidunt, illo hic dolorem, eligendi animi optio eum facilis.";
+type QueryTranscripts = Awaited<
+	ReturnType<typeof window.electronAPI.queryTranscripts>
+>;
+function useDbTranscripts() {
+	const [data, setData] = useState<QueryTranscripts>();
+	const queryTranscripts = async () => {
+		const result = await window.electronAPI.queryTranscripts();
+		setData(result);
+	};
+
+	useEffect(() => {
+		queryTranscripts();
+	}, []);
+
+	const refetch = () => {
+		queryTranscripts();
+	};
+
+	return {
+		data,
+		refetch,
+	};
+}
 
 interface Props {}
-export function HomeContent(props: Props) {
+export function HomeContent(_: Props) {
+	const { data } = useDbTranscripts();
+
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
 			<div className="flex items-start justify-between w-full">
@@ -28,22 +53,19 @@ export function HomeContent(props: Props) {
 
 			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
 				<CreateNewDictation />
-				<DictationCard
-					title="Test Skript #1"
-					shortDescription={
-						testDescription.substring(0, 100) +
-						(testDescription.length > 100 ? "..." : "")
-					}
-					lastEdited="Vor 2 Tagen"
-				/>
-				<DictationCard
-					title="Test Skript #2"
-					shortDescription={
-						testDescription.substring(0, 100) +
-						(testDescription.length > 100 ? "..." : "")
-					}
-					lastEdited="Vor 7 Tagen"
-				/>
+				{data?.map((item) => {
+					return (
+						<DictationCard
+							key={item.id}
+							title={item.title}
+							shortDescription={
+								item.text.substring(0, 100) +
+								(item.text.length > 100 ? "..." : "")
+							}
+							lastEdited={item.updatedAt}
+						/>
+					);
+				})}
 			</div>
 		</div>
 	);
@@ -81,7 +103,7 @@ const DictationCard = (props: DictationCardProps) => {
 				<span className="text-gray-500 text-sm">Zuletzt bearbeitet</span>
 				<div className="flex items-start bg-gray-100 rounded-lg px-1.5 py-0.5 justify-center shrink-0">
 					<span className="text-gray-600 text-sm font-medium ">
-						{props.lastEdited}
+						{dayjs(props.lastEdited).fromNow()}
 					</span>
 				</div>
 			</div>

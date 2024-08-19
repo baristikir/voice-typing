@@ -1,12 +1,6 @@
 import { assert } from "../components/utils/assert";
 import { ipcMain } from "electron";
-
-export const IPC_CHANNELS = {
-  WHISPER_START: "whisper:start",
-  WHISPER_STOP: "whisper:stop",
-  WHISPER_ADD_AUDIO: "whisper:add_audio",
-  WHISPER_GET_TRANSCRIPTION: "whisper:get_transcription",
-} as const;
+import { WHISPER_IPC_CHANNELS } from "./IPC";
 
 type STTWhisperStreamingModule = {
   start: () => void;
@@ -17,15 +11,15 @@ type STTWhisperStreamingModule = {
 export function registerWhisperIPCHandler(
   sttWhisperStreamingModule: STTWhisperStreamingModule,
 ): void {
-  ipcMain.handle(IPC_CHANNELS["WHISPER_START"], (_event, _data) => {
+  ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_START"], (_event, _data) => {
     console.log("[ whisperIPC ] Starting whisper ipc handler called.");
     sttWhisperStreamingModule.start();
   });
-  ipcMain.handle(IPC_CHANNELS["WHISPER_STOP"], (_event, _data) => {
+  ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_STOP"], (_event, _data) => {
     console.log("[ whisperIPC ] Stopping whisper ipc handler called.");
     sttWhisperStreamingModule.stop();
   });
-  ipcMain.handle(IPC_CHANNELS["WHISPER_ADD_AUDIO"], (_event, data) => {
+  ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_ADD_AUDIO"], (_event, data) => {
     assert.strictEqual(data instanceof Float32Array, true);
 
     if (data instanceof Float32Array) {
@@ -36,7 +30,10 @@ export function registerWhisperIPCHandler(
       );
     }
   });
-  ipcMain.handle(IPC_CHANNELS["WHISPER_GET_TRANSCRIPTION"], (_event, _data) => {
-    return sttWhisperStreamingModule.getTranscription();
-  });
+  ipcMain.handle(
+    WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIPTION"],
+    (_event, _data) => {
+      return sttWhisperStreamingModule.getTranscription();
+    },
+  );
 }
