@@ -1,7 +1,6 @@
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { HomeRoute } from "./app/home";
-import { NewDictationRoute } from "./app/new-dictation";
-import { ProjectRoute } from "./app/project";
+import { TranscriptRoute } from "./app/transcript";
 
 export default function App() {
 	// useRendererListener(MenuChannels.MENU_EVENT, onMenuEvent);
@@ -37,8 +36,10 @@ export default function App() {
 				<div className="py-16 px-8 w-full h-full no-drag">
 					<Routes>
 						<Route index path="/" Component={HomeRoute} />
-						<Route path="/new-dictation" Component={NewDictationRoute} />
-						<Route path="/projects/:project_id" Component={ProjectRoute} />
+						<Route
+							path="/transcripts/:transcript_id"
+							Component={TranscriptRoute}
+						/>
 					</Routes>
 				</div>
 			</div>

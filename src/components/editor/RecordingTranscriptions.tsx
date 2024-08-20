@@ -9,34 +9,65 @@ import {
 	Play,
 } from "@phosphor-icons/react";
 import clsx from "clsx";
+import { api } from "@/utils/rendererElectronAPI";
+import {
+	createHeadline1,
+	createLineBreak,
+	createParagraphText,
+} from "./EditorElements";
+import { TranscriptContentType } from "@/shared/models";
 
 const IS_SIMULATION_MODE = true;
-const TRANSCRIPTION_RATE_IN_MS = 300;
+const TRANSCRIPTION_RATE_IN_MS = 500;
 
 async function getLatestTranscription() {
-	const newTranscription = await window.electronAPI.getTranscription();
+	const newTranscription = await api.getTranscription();
 	return newTranscription;
 }
 
-function createParagraphText(textContent: string, isPartial: boolean) {
-	const paragraph = document.createElement("p");
-	paragraph.textContent = " " + textContent;
-	paragraph.id = `segment-${new Date().getTime()}`;
-	paragraph.className =
-		"text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-	paragraph.dataset.partial = `${isPartial}`;
+function getCurrentCursorState() {
+	const selection = window.getSelection();
+	if (selection.rangeCount === 0) return; // no selection was made
 
-	return paragraph;
-}
-function createHeadline1(textContent: string) {
-	const h1 = document.createElement("h1");
-	h1.textContent = textContent;
-	h1.className = "text-3xl font-semibold text-gray-950 mt-4";
-	return h1;
-}
-function createLineBreak() {
-	const br = document.createElement("br");
-	return br;
+	const range = selection.getRangeAt(0);
+	range.deleteContents();
+
+	return {
+		insertTextContent: (text: string) => {
+			// insert new text content into selected range
+			const textNode = document.createTextNode(text);
+
+			const startContainer = range.startContainer;
+			const endContainer = range.endContainer;
+			const commonAnchestor = range.commonAncestorContainer;
+
+			let targetNode: Node;
+
+			if (
+				commonAnchestor.nodeType === Node.ELEMENT_NODE &&
+				(commonAnchestor as any).tagName === "P" &&
+				startContainer === commonAnchestor.firstChild &&
+				endContainer === commonAnchestor.lastChild
+			) {
+				targetNode = commonAnchestor;
+				range.deleteContents();
+			} else {
+				targetNode = startContainer;
+				range.deleteContents();
+			}
+
+			if (targetNode.nodeType === Node.TEXT_NODE) {
+				targetNode.parentNode.insertBefore(textNode, targetNode);
+			} else {
+				targetNode.appendChild(textNode);
+			}
+
+			range.setStartAfter(textNode);
+			range.setEndAfter(textNode);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		},
+	};
 }
 
 export type RecorderProcessorMessageData = {
@@ -51,8 +82,10 @@ export enum EditorState {
 	SELECTION,
 }
 
-interface Props {}
-export const RecordingTranscriptions = (_: Props) => {
+interface Props {
+	textContent: string;
+}
+export const RecordingTranscriptions = (props: Props) => {
 	const textContainerRef = useRef<HTMLDivElement>(null);
 	const [editorState, setEditorState] = useState(EditorState.DICTATING);
 
@@ -110,51 +143,6 @@ export const RecordingTranscriptions = (_: Props) => {
 		};
 	}, []);
 
-	const getCurrentCursorState = () => {
-		const selection = window.getSelection();
-		if (selection.rangeCount === 0) return; // no selection was made
-
-		const range = selection.getRangeAt(0);
-		range.deleteContents();
-
-		return {
-			insertTextContent: (text: string) => {
-				// insert new text content into selected range
-				const textNode = document.createTextNode(text);
-
-				const startContainer = range.startContainer;
-				const endContainer = range.endContainer;
-				const commonAnchestor = range.commonAncestorContainer;
-
-				let targetNode: Node;
-
-				if (
-					commonAnchestor.nodeType === Node.ELEMENT_NODE &&
-					(commonAnchestor as any).tagName === "P" &&
-					startContainer === commonAnchestor.firstChild &&
-					endContainer === commonAnchestor.lastChild
-				) {
-					targetNode = commonAnchestor;
-					range.deleteContents();
-				} else {
-					targetNode = startContainer;
-					range.deleteContents();
-				}
-
-				if (targetNode.nodeType === Node.TEXT_NODE) {
-					targetNode.parentNode.insertBefore(textNode, targetNode);
-				} else {
-					targetNode.appendChild(textNode);
-				}
-
-				range.setStartAfter(textNode);
-				range.setEndAfter(textNode);
-				selection.removeAllRanges();
-				selection.addRange(range);
-			},
-		};
-	};
-
 	const insertIntoSelection = (textContent: string) => {
 		const currentSelection = getCurrentCursorState();
 		if (!currentSelection) return;
@@ -184,9 +172,7 @@ export const RecordingTranscriptions = (_: Props) => {
 	};
 
 	const insertTranscripts = (
-		newTranscriptions: Awaited<
-			ReturnType<typeof window.electronAPI.getTranscription>
-		>,
+		newTranscriptions: Awaited<ReturnType<typeof api.getTranscription>>,
 	) => {
 		for (let i = 0; i < newTranscriptions.segments.length; i++) {
 			const textContainer = textContainerRef.current;
@@ -238,6 +224,31 @@ export const RecordingTranscriptions = (_: Props) => {
 
 		const text = texts.join("\n");
 		navigator.clipboard.writeText(text);
+	};
+
+	const saveContent = async (content: {
+		type: "p" | "h1" | "br";
+		text: string;
+	}) => {
+		let data: { type: TranscriptContentType; content: string };
+
+		switch (content.type) {
+			case "h1":
+				data.type = TranscriptContentType.Headline1;
+				data.content = content.text;
+			case "p":
+				data.type = TranscriptContentType.Paragraph;
+				data.content = content.text;
+			case "br":
+				data.type = TranscriptContentType.Linebreak;
+				data.content = "\n";
+		}
+
+		// await api.updateTranscript(undefined, { ...data });
+	};
+
+	const handleContentChange = () => {
+		// TODO
 	};
 
 	const pauseDictation = () => {
@@ -404,3 +415,34 @@ const Simulation = {
 		}
 	},
 };
+
+function saveTextContent(textContainer: HTMLDivElement) {
+	let latestSegment = undefined;
+	const textContainerChildren = textContainer.children;
+	const texts: string[] = [];
+
+	Array.from(textContainerChildren).forEach((child, index) => {
+		const { tagName, textContent } = child;
+		const prevChild = textContainerChildren[index - 1];
+
+		if (tagName === "H1") {
+			texts.push(textContent);
+			return;
+		}
+
+		if (tagName === "BR") {
+			texts.push(" ");
+			return;
+		}
+
+		if (tagName === "P") {
+			if (!prevChild || prevChild.tagName !== "P") {
+				texts.push(textContent);
+			} else {
+				texts[texts.length - 1] += textContent;
+			}
+		}
+	});
+
+	const text = texts.join("\n");
+}

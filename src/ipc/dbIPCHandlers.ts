@@ -22,26 +22,25 @@ export function registerDbIPCHandler() {
 
     const transcript = TranscriptsDbService.getTranscriptById(data);
 
+    console.log(transcript);
     assert.strictEqual(typeof transcript.id === "number", true);
     assert.strictEqual(typeof transcript.title === "string", true);
-    assert.strictEqual(typeof transcript.text === "string", true);
-    assert.strictEqual(typeof transcript.createdAt === "string", true);
-    assert.strictEqual(typeof transcript.updatedAt === "string", true);
 
     return transcript;
   });
 
   ipcMain.handle(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], (_event, data) => {
-    console.log("[ dbIPC ] Inserting new transcript record into database.");
-
-    assert.strictEqual(typeof data.title === "string", true);
-    assert.strictEqual(typeof data.text === "string", true);
-
-    const transcripts = TranscriptsDbService.createTranscript(
-      data.title,
-      data.ttext,
+    console.log(
+      "[ dbIPC ] Inserting new transcript record into database.",
+      data,
     );
 
-    return transcripts;
+    assert.strictEqual(typeof data.title === "string", true);
+
+    const transcript = TranscriptsDbService.createTranscript(
+      data.title,
+    );
+
+    return transcript;
   });
 }

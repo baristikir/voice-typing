@@ -3,10 +3,14 @@ import { cn } from "../utils/cn";
 
 const DEFAULT_TITLE = "Untitled";
 
-export const TitleWithInput = () => {
-	const [title, setTitle] = useState<string>(DEFAULT_TITLE);
+interface Props {
+	title?: string;
+}
+export const TitleWithInput = (props: Props) => {
+	const [title, setTitle] = useState<string>(props.title ?? DEFAULT_TITLE);
 
 	const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		//TODO: save to database when title changes
 		e.preventDefault();
 		setTitle(e.target.value);
 	};

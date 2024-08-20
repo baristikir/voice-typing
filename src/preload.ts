@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   queryTranscriptById: (id: string) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_GET"], id),
   createTranscript: (title: string, text: string) =>
-    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], title, text),
+    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], { title, text }),
   updateTranscript: (title?: string, text?: string) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_UPDATE"], title, text),
   deleteTranscript: (id: number) =>

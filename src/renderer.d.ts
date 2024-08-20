@@ -1,11 +1,4 @@
-// TODO: Make this type a shared, to reuse it here and in the backend
-type Transcript = {
-  id: number;
-  title: string;
-  text: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import { Transcript, TranscriptContent } from "./shared/models";
 
 type TranscribedSegmentPayload = {
   text: string;
@@ -25,8 +18,14 @@ export interface ElectronAPI {
   // Db
   queryTranscripts: () => Promise<Transcript[]>;
   queryTranscriptById: (id: number) => Promise<Transcript>;
-  createTranscript: (title: string, text: string) => Promise<Transcript>;
-  updateTranscript: (title?: string, text?: string) => Promise<Transcript>;
+  createTranscript: (
+    title: string,
+    content?: Omit<TranscriptContent, "id">,
+  ) => Promise<Transcript>;
+  updateTranscript: (
+    title?: string,
+    content?: Omit<TranscriptContent, "id"> | TranscriptContent,
+  ) => Promise<Transcript>;
   deleteTranscript: (id: number) => void;
 }
 
