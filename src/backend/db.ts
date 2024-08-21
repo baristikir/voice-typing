@@ -77,7 +77,7 @@ interface ITranscriptsDbService {
   updateTranscript(
     id: number,
     title?: string,
-    content?: TranscriptContent[],
+    contents?: (Omit<TranscriptContent, "id"> & { id?: number })[],
   ): Transcript;
   deleteTranscript(id: number): boolean;
 }
@@ -123,23 +123,47 @@ export const TranscriptsDbService: ITranscriptsDbService = {
         UPDATE transcripts SET title = ? WHERE id = ?
       `);
 
-    const insertContentStmt = db.prepare(`
-        INSERT INTO transcript_contents (transcript_id, content, content_type, order_num) VALUES (?, ?, ?, ?)
+    const updateContentStmt = db.prepare(`
+        UPDATE transcript_contents
+        SET content = ?, content_type = ?, order_num = ?
+        WHERE id = ? AND transcript_id =?
       `);
 
-    const transcript = db.transaction(() => {
+    const insertContentStmt = db.prepare(`
+        INSERT INTO transcript_contents (transcript_id, content, content_type, order_num)
+        VALUES (?, ?, ?, ?)
+      `);
+
+    const data = db.transaction(() => {
       if (title) {
         updateTranscriptStmt.run(title, id);
       }
 
-      if (contents) {
-        // TODO
+      if (contents && contents.length > 0) {
+        for (const content of contents) {
+          if (content.id) {
+            updateContentStmt.run(
+              content.content,
+              content.type,
+              content.order,
+              content.id,
+              id,
+            );
+          } else {
+            insertContentStmt.run(
+              id,
+              content.content,
+              content.type,
+              content.order,
+            );
+          }
+        }
       }
 
       return TranscriptsDbService.getTranscriptById(id);
     });
 
-    return transcript();
+    return data();
   },
   deleteTranscript(id: number): boolean {
     const stmt = db.prepare("DELETE FROM transcripts WHERE id = ?");
@@ -168,7 +192,7 @@ function groupTranscriptContent(rows: any[]): Transcript[] {
         id: row.content_id,
         content: row.content,
         order: row.order_num,
-        type: row.type,
+        type: row.content_type,
       });
     }
   }

@@ -23,8 +23,11 @@ export interface ElectronAPI {
     content?: Omit<TranscriptContent, "id">,
   ) => Promise<Transcript>;
   updateTranscript: (
-    title?: string,
-    content?: Omit<TranscriptContent, "id"> | TranscriptContent,
+    data: {
+      id: number;
+      title?: string;
+      contents?: (Omit<TranscriptContent, "id"> & { id?: number })[];
+    },
   ) => Promise<Transcript>;
   deleteTranscript: (id: number) => void;
 }

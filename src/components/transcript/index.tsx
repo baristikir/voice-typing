@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { Editor } from "../editor";
+import { api, QueryTranscriptByIdData } from "@/utils/rendererElectronAPI";
 
-type QueryTranscript = Awaited<
-	ReturnType<typeof window.electronAPI.queryTranscriptById>
->;
 function useDbTranscript(id: number) {
-	const [data, setData] = useState<QueryTranscript>();
+	const [data, setData] = useState<QueryTranscriptByIdData>();
 	const queryTranscripts = async () => {
-		const result = await window.electronAPI.queryTranscriptById(id);
+		const result = await api.queryTranscriptById(id);
 		setData(result);
 	};
 

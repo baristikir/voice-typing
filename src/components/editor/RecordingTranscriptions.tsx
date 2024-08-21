@@ -1,21 +1,22 @@
-import { useRef, useState, useEffect } from "react";
-import { Button } from "../ui/Button";
-import {
-	ArticleNyTimes,
-	Clipboard,
-	CursorText,
-	Paragraph,
-	Pause,
-	Play,
-} from "@phosphor-icons/react";
-import clsx from "clsx";
+import { useRef, useEffect } from "react";
 import { api } from "@/utils/rendererElectronAPI";
 import {
+	copyTextContentsToClipboard,
 	createHeadline1,
 	createLineBreak,
 	createParagraphText,
+	getCurrentCursorState,
 } from "./EditorElements";
-import { TranscriptContentType } from "@/shared/models";
+import { TranscriptContent, TranscriptContentType } from "@/shared/models";
+import {
+	EditorAddContentAction,
+	EditorMode,
+	EditorRemoveContentAction,
+	EditorSetTitleAction,
+	EditorUpdateContentAction,
+} from "./useEditor";
+import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
+import { StatusBar } from "./StatusBar";
 
 const IS_SIMULATION_MODE = true;
 const TRANSCRIPTION_RATE_IN_MS = 500;
@@ -25,69 +26,30 @@ async function getLatestTranscription() {
 	return newTranscription;
 }
 
-function getCurrentCursorState() {
-	const selection = window.getSelection();
-	if (selection.rangeCount === 0) return; // no selection was made
-
-	const range = selection.getRangeAt(0);
-	range.deleteContents();
-
-	return {
-		insertTextContent: (text: string) => {
-			// insert new text content into selected range
-			const textNode = document.createTextNode(text);
-
-			const startContainer = range.startContainer;
-			const endContainer = range.endContainer;
-			const commonAnchestor = range.commonAncestorContainer;
-
-			let targetNode: Node;
-
-			if (
-				commonAnchestor.nodeType === Node.ELEMENT_NODE &&
-				(commonAnchestor as any).tagName === "P" &&
-				startContainer === commonAnchestor.firstChild &&
-				endContainer === commonAnchestor.lastChild
-			) {
-				targetNode = commonAnchestor;
-				range.deleteContents();
-			} else {
-				targetNode = startContainer;
-				range.deleteContents();
-			}
-
-			if (targetNode.nodeType === Node.TEXT_NODE) {
-				targetNode.parentNode.insertBefore(textNode, targetNode);
-			} else {
-				targetNode.appendChild(textNode);
-			}
-
-			range.setStartAfter(textNode);
-			range.setEndAfter(textNode);
-			selection.removeAllRanges();
-			selection.addRange(range);
-		},
-	};
-}
-
 export type RecorderProcessorMessageData = {
 	recordBuffer: Float32Array[];
 	sampleRate: number;
 	currentFrame: number;
 };
 
-export enum EditorState {
-	DICTATING,
-	EDITING,
-	SELECTION,
-}
-
 interface Props {
-	textContent: string;
+	editorMode: EditorMode;
+	contents: TranscriptContent[];
+	onTitleChange(payload: EditorSetTitleAction["payload"]): void;
+	onAddContent(payload: EditorAddContentAction["payload"]): void;
+	onUpdateContent(payload: EditorUpdateContentAction["payload"]): void;
+	onRemoveContent(payload: EditorRemoveContentAction["payload"]): void;
+	onEditorModeChange(payload: EditorMode): void;
 }
 export const RecordingTranscriptions = (props: Props) => {
 	const textContainerRef = useRef<HTMLDivElement>(null);
-	const [editorState, setEditorState] = useState(EditorState.DICTATING);
+
+	useEffect(() => {
+		if (!textContainerRef.current) return;
+		if (props.contents && props.contents.length > 0) {
+			initContents(props.contents);
+		}
+	}, []);
 
 	// Register Transcription/Simulation Processes
 	useEffect(() => {
@@ -96,7 +58,11 @@ export const RecordingTranscriptions = (props: Props) => {
 		let sim_i = 1;
 		let timer = setInterval(async () => {
 			if (IS_SIMULATION_MODE) {
-				Simulation.simulateTranscription(textContainerRef.current, sim_i);
+				Simulation.simulateTranscription(
+					textContainerRef.current,
+					sim_i,
+					props.onAddContent,
+				);
 				sim_i++;
 				return;
 			}
@@ -106,7 +72,7 @@ export const RecordingTranscriptions = (props: Props) => {
 			insertTranscripts(newTranscriptions);
 		}, TRANSCRIPTION_RATE_IN_MS);
 
-		if (editorState !== EditorState.DICTATING) {
+		if (props.editorMode !== EditorMode.DICTATING) {
 			clearInterval(timer);
 			return;
 		}
@@ -114,26 +80,21 @@ export const RecordingTranscriptions = (props: Props) => {
 		return () => {
 			clearInterval(timer);
 		};
-	}, [editorState]);
+	}, [props.editorMode]);
 
 	// Register Selection Listeners
 	useEffect(() => {
 		const checkSelection = (_: Event) => {
 			const selection = window.getSelection();
-			const range = window.getSelection().rangeCount;
-			if (range < 0 || selection.isCollapsed) {
-				setEditorState(EditorState.EDITING);
+			const rangeCount = window.getSelection().rangeCount;
+			if (rangeCount < 0 || selection.isCollapsed) {
+				props.onEditorModeChange(EditorMode.EDITING);
 			}
 
 			const rangeAt = window.getSelection()?.getRangeAt(0);
-
-			// console.log({
-			// 	type: _.type,
-			// 	collapsed: rangeAt?.collapsed,
-			// });
-
-			if (!rangeAt.collapsed) setEditorState(EditorState.SELECTION);
-			else setEditorState(EditorState.EDITING);
+			if (!rangeAt.collapsed && props.editorMode !== EditorMode.SELECTION) {
+				props.onEditorModeChange(EditorMode.SELECTION);
+			}
 		};
 
 		document.addEventListener("selectionchange", checkSelection);
@@ -141,7 +102,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		return () => {
 			document.removeEventListener("selectionchange", checkSelection);
 		};
-	}, []);
+	}, [props.editorMode]);
 
 	const insertIntoSelection = (textContent: string) => {
 		const currentSelection = getCurrentCursorState();
@@ -150,12 +111,18 @@ export const RecordingTranscriptions = (props: Props) => {
 		currentSelection.insertTextContent(textContent);
 	};
 
-	const insertParagraph = () => {
+	const insertLineBreak = () => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
 		const br = createLineBreak();
 		textContainer.appendChild(br);
+
+		props.onAddContent({
+			type: TranscriptContentType.Linebreak,
+			content: "\n",
+			order: textContainer.children.length,
+		});
 	};
 
 	const insertHeadline = (textContent: string) => {
@@ -169,6 +136,31 @@ export const RecordingTranscriptions = (props: Props) => {
 		textContainer.appendChild(br1);
 		textContainer.appendChild(h1);
 		textContainer.appendChild(br2);
+
+		props.onAddContent({
+			type: TranscriptContentType.Headline1,
+			content: textContent,
+			order: textContainer.children.length,
+		});
+	};
+
+	const initContents = (contents: TranscriptContent[]) => {
+		const textContainer = textContainerRef.current;
+
+		for (const content of contents) {
+			if (content.type === TranscriptContentType.Paragraph) {
+				const paragraph = createParagraphText(content.content, false);
+				textContainer.appendChild(paragraph);
+			}
+			if (content.type === TranscriptContentType.Headline1) {
+				const headline = createHeadline1(content.content);
+				textContainer.appendChild(headline);
+			}
+			if (content.type === TranscriptContentType.Linebreak) {
+				const linebreak = createLineBreak();
+				textContainer.appendChild(linebreak);
+			}
+		}
 	};
 
 	const insertTranscripts = (
@@ -188,46 +180,19 @@ export const RecordingTranscriptions = (props: Props) => {
 				lastText.textContent = segment.text;
 				if (!segment.isPartial) {
 					lastText.dataset.partial = "false";
+					props.onAddContent({
+						type: TranscriptContentType.Paragraph,
+						content: lastText.textContent,
+						order: textContainer.children.length,
+					});
 				}
 			}
 		}
 	};
 
-	const copyTextContentsToClipboard = () => {
-		if (!textContainerRef.current) return;
-
-		const textContainerChildren = textContainerRef.current.children;
-		const texts: string[] = [];
-
-		Array.from(textContainerChildren).forEach((child, index) => {
-			const { tagName, textContent } = child;
-			const prevChild = textContainerChildren[index - 1];
-
-			if (tagName === "H1") {
-				texts.push(textContent);
-				return;
-			}
-
-			if (tagName === "BR") {
-				texts.push(" ");
-				return;
-			}
-
-			if (tagName === "P") {
-				if (!prevChild || prevChild.tagName !== "P") {
-					texts.push(textContent);
-				} else {
-					texts[texts.length - 1] += textContent;
-				}
-			}
-		});
-
-		const text = texts.join("\n");
-		navigator.clipboard.writeText(text);
-	};
-
-	const saveContent = async (content: {
+	const handleContentChange = (content: {
 		type: "p" | "h1" | "br";
+		action: "add" | "update";
 		text: string;
 	}) => {
 		let data: { type: TranscriptContentType; content: string };
@@ -243,206 +208,36 @@ export const RecordingTranscriptions = (props: Props) => {
 				data.type = TranscriptContentType.Linebreak;
 				data.content = "\n";
 		}
-
-		// await api.updateTranscript(undefined, { ...data });
-	};
-
-	const handleContentChange = () => {
-		// TODO
 	};
 
 	const pauseDictation = () => {
-		setEditorState(EditorState.EDITING);
+		props.onEditorModeChange(EditorMode.EDITING);
 	};
 
 	const resumeDictation = () => {
-		setEditorState(EditorState.DICTATING);
+		props.onEditorModeChange(EditorMode.DICTATING);
 	};
 
 	return (
 		<div>
-			<div className="flex-end">
-				<div className="flex justify-end w-full">
-					<span
-						className={clsx(
-							"font-mono text-white uppercase text-sm px-2 py-1",
-							{
-								"bg-blue-500": editorState === EditorState.DICTATING,
-								"bg-red-500": editorState === EditorState.EDITING,
-								"bg-yellow-500": editorState === EditorState.SELECTION,
-							},
-						)}
-					>
-						{editorState === EditorState.DICTATING
-							? "Diktiermodus"
-							: editorState === EditorState.EDITING
-								? "Bearbeitung"
-								: "Auswahl"}
-					</span>
-				</div>
-			</div>
+			<StatusBar editorMode={props.editorMode} />
 			<div className="flex flex-col gap-2">
 				<TestSimulationControls
-					editorState={editorState}
+					editorMode={props.editorMode}
 					pauseSimulation={pauseDictation}
 					resumeSimulation={resumeDictation}
-					exportToClipboard={copyTextContentsToClipboard}
+					exportToClipboard={() =>
+						copyTextContentsToClipboard(textContainerRef.current)
+					}
 					insertIntoSelection={insertIntoSelection}
-					insertParagraph={insertParagraph}
+					insertParagraph={insertLineBreak}
 					insertHeadline={insertHeadline}
 				/>
 				<div
-					contentEditable={editorState !== EditorState.DICTATING}
+					contentEditable={props.editorMode !== EditorMode.DICTATING}
 					ref={textContainerRef}
 				></div>
 			</div>
 		</div>
 	);
 };
-
-// DEVELOPMENT ONLY
-const TestSimulationControls = ({
-	editorState,
-	resumeSimulation,
-	pauseSimulation,
-	exportToClipboard,
-	insertIntoSelection,
-	insertParagraph,
-	insertHeadline,
-}: {
-	editorState: EditorState;
-	resumeSimulation(): void;
-	pauseSimulation(): void;
-	exportToClipboard: () => void;
-	insertIntoSelection: (text: string) => void;
-	insertParagraph: () => void;
-	insertHeadline: (text: string) => void;
-}) => {
-	return (
-		<div className="flex items-center gap-2">
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState !== EditorState.DICTATING}
-				onClick={pauseSimulation}
-			>
-				<Pause className="mr-2" weight="duotone" />
-				Pause
-			</Button>
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState === EditorState.DICTATING}
-				onClick={resumeSimulation}
-			>
-				<Play className="mr-2" weight="duotone" />
-				Resume
-			</Button>
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState === EditorState.DICTATING}
-				onClick={() => insertIntoSelection("Text")}
-			>
-				<CursorText className="mr-2" weight="regular" />
-				Insert Text
-			</Button>
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState === EditorState.DICTATING}
-				onClick={insertParagraph}
-			>
-				<Paragraph className="mr-2" weight="regular" />
-				Insert Paragraph
-			</Button>
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState === EditorState.DICTATING}
-				onClick={() => insertHeadline("Some Title")}
-			>
-				<ArticleNyTimes className="mr-2" weight="regular" />
-				Insert Headline
-			</Button>
-
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={editorState === EditorState.DICTATING}
-				onClick={exportToClipboard}
-			>
-				<Clipboard className="mr-2" weight="regular" />
-				Copy to Clipboard
-			</Button>
-		</div>
-	);
-};
-
-// DEVELOPMENT ONLY
-const Simulation = {
-	testSegments: [
-		"lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-		"Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor.",
-		"Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi.",
-		"Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat.",
-		"Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim.",
-		"Pellentesque congue. Ut in risus volutpat libero pharetra tempor.",
-	],
-	simulateTranscription(
-		textContainer: HTMLDivElement,
-		currentIteration: number,
-	) {
-		const lastChild = textContainer.lastChild;
-		const isParagraphElement = lastChild?.nodeName === "P";
-		const isBrElement = lastChild?.nodeName === "BR";
-		const isPartial =
-			(lastChild as HTMLParagraphElement)?.dataset.partial === "false";
-
-		if (!lastChild || isBrElement || (isParagraphElement && isPartial)) {
-			const segment = this.testSegments[currentIteration % 5];
-			const paragraph = createParagraphText(
-				segment,
-				currentIteration % 5 !== 0,
-			);
-			textContainer.appendChild(paragraph);
-		} else if (lastChild && isParagraphElement) {
-			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
-
-			if (currentIteration % 5 === 0) {
-				(lastChild as HTMLParagraphElement).dataset.partial = "false";
-			}
-		}
-	},
-};
-
-function saveTextContent(textContainer: HTMLDivElement) {
-	let latestSegment = undefined;
-	const textContainerChildren = textContainer.children;
-	const texts: string[] = [];
-
-	Array.from(textContainerChildren).forEach((child, index) => {
-		const { tagName, textContent } = child;
-		const prevChild = textContainerChildren[index - 1];
-
-		if (tagName === "H1") {
-			texts.push(textContent);
-			return;
-		}
-
-		if (tagName === "BR") {
-			texts.push(" ");
-			return;
-		}
-
-		if (tagName === "P") {
-			if (!prevChild || prevChild.tagName !== "P") {
-				texts.push(textContent);
-			} else {
-				texts[texts.length - 1] += textContent;
-			}
-		}
-	});
-
-	const text = texts.join("\n");
-}

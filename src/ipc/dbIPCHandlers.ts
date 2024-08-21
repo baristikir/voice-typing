@@ -43,4 +43,33 @@ export function registerDbIPCHandler() {
 
     return transcript;
   });
+
+  ipcMain.handle(DB_IPC_CHANNELS["TRANSCRIPT_UPDATE"], (_event, data) => {
+    console.log(
+      "[ dbIPC ] Updating transcript record in database.",
+      data,
+    );
+
+    assert.strictEqual(typeof data.id === "number", true);
+    assert.strictEqual(
+      data.title
+        ? typeof data.title === "string"
+        : typeof data.title === "undefined",
+      true,
+    );
+    assert.strictEqual(
+      data.contents
+        ? typeof data.contents === "object"
+        : typeof data.contents === "undefined",
+      true,
+    );
+
+    const transcript = TranscriptsDbService.updateTranscript(
+      data.id,
+      data.title,
+      data.contents,
+    );
+
+    return transcript;
+  });
 }

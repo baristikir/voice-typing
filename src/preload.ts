@@ -2,6 +2,7 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from "electron";
 import { DB_IPC_CHANNELS, WHISPER_IPC_CHANNELS } from "./ipc/IPC";
+import { TranscriptContent } from "./shared/models";
 
 console.log("[ preload ] Preload script loaded.");
 
@@ -18,8 +19,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_GET"], id),
   createTranscript: (title: string, text: string) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], { title, text }),
-  updateTranscript: (title?: string, text?: string) =>
-    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_UPDATE"], title, text),
+  updateTranscript: (
+    data: {
+      id: number;
+      title?: string;
+      contents?: (Omit<TranscriptContent, "id"> & { id?: number })[];
+    },
+  ) =>
+    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_UPDATE"], {
+      ...data,
+    }),
   deleteTranscript: (id: number) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_DELETE"], id),
 });
