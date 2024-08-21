@@ -24,7 +24,7 @@ speech to text. The application is built using Electron.
 - [ ] Replace previous searched instance with words
 - [x] Copy content to clipboard
 - [ ] Export content as PDF
-- [ ] Autosave text contents to DB
+- [x] Autosave text contents to DB
 - Dictation:
 - [x] Capture audio input from microphone
 - [x] Transcribe audio segments and return to JS thread
@@ -38,9 +38,9 @@ speech to text. The application is built using Electron.
 - [ ] Convert search into voice command
 - [ ] Convert replace into voice command
 - Database:
-- [ ] Setup SQLite DB
-- [ ] Create tables
-- [ ] Add IPC handlers
+- [x] Setup SQLite DB
+- [x] Create tables
+- [x] Add IPC handlers
 - Settings:
 - [ ] Configurable dictation (toggle or push-to-talk)
 - [ ] Customizable keyboard shortcuts
