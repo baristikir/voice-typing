@@ -20,8 +20,8 @@ speech to text. The application is built using Electron.
   - [x] Text
   - [x] Headline
   - [x] Empty Paragraphs
-- [ ] Search for texts inside editor
-- [ ] Replace previous searched instance with words
+- [x] Search for texts inside editor
+- [x] Replace previous searched instance with words
 - [x] Copy content to clipboard
 - [ ] Export content as PDF
 - [x] Autosave text contents to DB

@@ -10,26 +10,28 @@ import { Button } from "../ui/Button";
 
 interface Props {
 	onSearchQuery(query: string): void;
-	// onReplacementQuery(query: string): void;
+	onReplaceResults(
+		replaceText: string,
+		searchText: string,
+		replaceAll?: boolean,
+	): void;
 }
 export const EditorControls = (props: Props) => {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [replacementQuery, setReplacementQuery] = useState("");
+	const [replaceQuery, setReplaceQuery] = useState("");
 
 	const handleTriggerSearch = () => {
 		props.onSearchQuery(searchQuery);
 	};
-	const handleTriggerReplacement = () => {
-		props.onSearchQuery(replacementQuery);
+	const handleTriggerReplacement = (replaceAll: boolean = false) => {
+		props.onReplaceResults(replaceQuery, searchQuery, replaceAll);
 	};
 
 	const handleSearchQueryChange = (event: ChangeEvent<HTMLInputElement>) => {
 		setSearchQuery(event.currentTarget.value);
 	};
-	const handleReplacementQueryChange = (
-		event: ChangeEvent<HTMLInputElement>,
-	) => {
-		setReplacementQuery(event.currentTarget.value);
+	const handleReplaceQueryChange = (event: ChangeEvent<HTMLInputElement>) => {
+		setReplaceQuery(event.currentTarget.value);
 	};
 
 	return (
@@ -53,17 +55,24 @@ export const EditorControls = (props: Props) => {
 			<div className="flex items-center gap-2">
 				<input
 					type="text"
-					value={replacementQuery}
-					onChange={handleReplacementQueryChange}
+					value={replaceQuery}
+					onChange={handleReplaceQueryChange}
 					className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500"
 					placeholder="Ersetzen Eingabe"
 				/>
 				<Button
 					size="sm"
-					disabled={replacementQuery.length <= 0}
-					onClick={handleTriggerReplacement}
+					disabled={replaceQuery.length <= 0}
+					onClick={() => handleTriggerReplacement(false)}
 				>
 					Ersetzen
+				</Button>
+				<Button
+					size="sm"
+					disabled={replaceQuery.length <= 0}
+					onClick={() => handleTriggerReplacement(true)}
+				>
+					Alle Ersetzen
 				</Button>
 			</div>
 		</div>

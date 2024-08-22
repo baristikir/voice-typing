@@ -158,6 +158,38 @@ function removeHighlightFromNode(node: Node) {
 	Array.from(node.childNodes).forEach(removeHighlightFromNode);
 }
 
+function replaceInNode(
+	node: Node,
+	regex: RegExp,
+	replaceText: string,
+	replaceAll: boolean,
+) {
+	const { nodeType } = node;
+	if (nodeType === Node.TEXT_NODE) {
+		const { parentNode: parent } = node;
+
+		if (parent && parent.nodeName === "MARK") {
+			const newText = node.textContent?.replace(regex, replaceText) || "";
+			if (newText !== node.textContent) {
+				node.textContent = newText;
+				return true;
+			}
+		}
+	}
+
+	if (nodeType === Node.ELEMENT_NODE) {
+		let replaced = false;
+		Array.from(node.childNodes).forEach((child) => {
+			if (replaced && !replaceAll) return;
+			replaced =
+				replaceInNode(child, regex, replaceText, replaceAll) || replaced;
+		});
+		return replaced;
+	}
+
+	return false;
+}
+
 export {
 	createParagraphText,
 	createHeadline1,
@@ -166,4 +198,5 @@ export {
 	copyTextContentsToClipboard,
 	highlightNode,
 	removeHighlightFromNode,
+	replaceInNode,
 };

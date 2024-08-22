@@ -8,6 +8,7 @@ import {
 	getCurrentCursorState,
 	highlightNode,
 	removeHighlightFromNode,
+	replaceInNode,
 } from "./EditorElements";
 import { TranscriptContent, TranscriptContentType } from "@/shared/models";
 import {
@@ -205,8 +206,32 @@ export const RecordingTranscriptions = (props: Props) => {
 		);
 	};
 
+	const replaceSearchResults = (
+		replaceText: string,
+		searchText: string,
+		replaceAll: boolean,
+	) => {
+		const textContainer = textContainerRef.current;
+		if (!replaceText || !searchText || !textContainerRef.current) return;
+
+		const regex = new RegExp(searchText, "gi");
+		let replaced = false;
+
+		Array.from(textContainer.childNodes).forEach((node) => {
+			if (replaced && !replaceAll) return;
+			replaced = replaceInNode(node, regex, replaceText, replaceAll);
+		});
+	};
+
 	const handleSearch = (query: string) => {
 		highlightSearchResults(query);
+	};
+	const handleReplace = (
+		replaceText: string,
+		searchText: string,
+		replaceAll: boolean,
+	) => {
+		replaceSearchResults(replaceText, searchText, replaceAll);
 	};
 
 	const pauseDictation = () => {
@@ -222,7 +247,7 @@ export const RecordingTranscriptions = (props: Props) => {
 			<StatusBar editorMode={props.editorMode} />
 			<EditorControls
 				onSearchQuery={handleSearch}
-				// onReplacementQuery={handleReplacement}
+				onReplaceResults={handleReplace}
 			/>
 			<div className="flex flex-col gap-2">
 				<TestSimulationControls
