@@ -4,8 +4,7 @@
 		- Insert Headline
 		- Insert Linebreak
 */
-
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, memo, useState } from "react";
 import { Button } from "../ui/Button";
 
 interface Props {
@@ -37,11 +36,9 @@ export const EditorControls = (props: Props) => {
 	return (
 		<div className="flex items-center justify-start gap-4 py-2">
 			<div className="flex items-center gap-2">
-				<input
-					type="text"
+				<Input
 					value={searchQuery}
 					onChange={handleSearchQueryChange}
-					className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500"
 					placeholder="Suche Eingabe"
 				/>
 				<Button
@@ -53,11 +50,9 @@ export const EditorControls = (props: Props) => {
 				</Button>
 			</div>
 			<div className="flex items-center gap-2">
-				<input
-					type="text"
+				<Input
 					value={replaceQuery}
 					onChange={handleReplaceQueryChange}
-					className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500"
 					placeholder="Ersetzen Eingabe"
 				/>
 				<Button
@@ -78,3 +73,19 @@ export const EditorControls = (props: Props) => {
 		</div>
 	);
 };
+
+const Input = memo(
+	(props: {
+		value: string;
+		onChange(e: ChangeEvent<HTMLInputElement>): void;
+		placeholder: string;
+	}) => (
+		<input
+			type="text"
+			value={props.value}
+			onChange={props.onChange}
+			className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500"
+			placeholder={props.placeholder}
+		/>
+	),
+);

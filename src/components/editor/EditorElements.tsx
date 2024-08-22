@@ -100,7 +100,6 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 function highlightNode(node: Node, regex: RegExp) {
 	const { nodeType, nodeName } = node;
 	if (nodeType === Node.ELEMENT_NODE && nodeName !== "MARK") {
-		console.log("Recursive highlight call", node);
 		Array.from(node.childNodes).forEach((childNode) =>
 			highlightNode(childNode, regex),
 		);
