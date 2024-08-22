@@ -97,10 +97,73 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 	navigator.clipboard.writeText(text);
 }
 
+function highlightNode(node: Node, regex: RegExp) {
+	const { nodeType, nodeName } = node;
+	if (nodeType === Node.ELEMENT_NODE && nodeName !== "MARK") {
+		console.log("Recursive highlight call", node);
+		Array.from(node.childNodes).forEach((childNode) =>
+			highlightNode(childNode, regex),
+		);
+	}
+
+	if (nodeType === Node.TEXT_NODE) {
+		const { parentNode: parent } = node;
+		const isMarkElement = parent.nodeName === "MARK";
+		if (!parent || isMarkElement) {
+			console.log("Node is already mark element", parent);
+			return;
+		}
+
+		const matches = node.textContent?.match(regex);
+		if (!matches) {
+			console.log("No matches found", node.textContent);
+			return;
+		}
+
+		const fragment = document.createDocumentFragment();
+		const parts = node.textContent?.split(regex);
+
+		parts?.forEach((part, index) => {
+			fragment.appendChild(document.createTextNode(part));
+			if (index < parts.length - 1) {
+				const mark = document.createElement("mark");
+				mark.textContent = matches[index];
+				fragment.appendChild(mark);
+			}
+		});
+
+		parent.replaceChild(fragment, node);
+	}
+}
+
+function removeHighlightFromNode(node: Node) {
+	const { nodeType, nodeName } = node;
+	if (nodeType !== Node.ELEMENT_NODE) {
+		return;
+	}
+
+	if (nodeName === "MARK") {
+		const { parentNode: parent } = node;
+		if (parent) {
+			parent.replaceChild(
+				document.createTextNode(node.textContent || ""),
+				node,
+			);
+			parent.normalize();
+		}
+
+		return;
+	}
+
+	Array.from(node.childNodes).forEach(removeHighlightFromNode);
+}
+
 export {
 	createParagraphText,
 	createHeadline1,
 	createLineBreak,
 	getCurrentCursorState,
 	copyTextContentsToClipboard,
+	highlightNode,
+	removeHighlightFromNode,
 };

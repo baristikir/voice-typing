@@ -6,6 +6,8 @@ import {
 	createLineBreak,
 	createParagraphText,
 	getCurrentCursorState,
+	highlightNode,
+	removeHighlightFromNode,
 } from "./EditorElements";
 import { TranscriptContent, TranscriptContentType } from "@/shared/models";
 import {
@@ -17,6 +19,7 @@ import {
 } from "./useEditor";
 import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
 import { StatusBar } from "./StatusBar";
+import { EditorControls } from "./EditorControls";
 
 const IS_SIMULATION_MODE = true;
 const TRANSCRIPTION_RATE_IN_MS = 500;
@@ -190,24 +193,20 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
-	const handleContentChange = (content: {
-		type: "p" | "h1" | "br";
-		action: "add" | "update";
-		text: string;
-	}) => {
-		let data: { type: TranscriptContentType; content: string };
+	const highlightSearchResults = (query: string) => {
+		const textContainer = textContainerRef.current;
+		if (!query || !textContainerRef.current) return;
 
-		switch (content.type) {
-			case "h1":
-				data.type = TranscriptContentType.Headline1;
-				data.content = content.text;
-			case "p":
-				data.type = TranscriptContentType.Paragraph;
-				data.content = content.text;
-			case "br":
-				data.type = TranscriptContentType.Linebreak;
-				data.content = "\n";
-		}
+		Array.from(textContainer.childNodes).forEach(removeHighlightFromNode);
+
+		const regex = new RegExp(query, "gi");
+		Array.from(textContainer.childNodes).forEach((node) =>
+			highlightNode(node, regex),
+		);
+	};
+
+	const handleSearch = (query: string) => {
+		highlightSearchResults(query);
 	};
 
 	const pauseDictation = () => {
@@ -221,6 +220,10 @@ export const RecordingTranscriptions = (props: Props) => {
 	return (
 		<div>
 			<StatusBar editorMode={props.editorMode} />
+			<EditorControls
+				onSearchQuery={handleSearch}
+				// onReplacementQuery={handleReplacement}
+			/>
 			<div className="flex flex-col gap-2">
 				<TestSimulationControls
 					editorMode={props.editorMode}
