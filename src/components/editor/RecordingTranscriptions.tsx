@@ -22,6 +22,7 @@ import {
 import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
 import { StatusBar } from "./StatusBar";
 import { EditorControls } from "./EditorControls";
+import cuid from "cuid";
 
 const IS_SIMULATION_MODE = true;
 const TRANSCRIPTION_RATE_IN_MS = 500;
@@ -42,6 +43,7 @@ enum ElementUpdateKind {
 	Deletion,
 }
 type EditorElementUpdate = Omit<TranscriptContent, "order"> & {
+	id: string | null;
 	kind: ElementUpdateKind;
 };
 
@@ -164,7 +166,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		const br = createLineBreak();
+		const br = createLineBreak({ id: cuid() });
 		textContainer.appendChild(br);
 	};
 
@@ -172,9 +174,9 @@ export const RecordingTranscriptions = (props: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		const br1 = createLineBreak();
-		const br2 = createLineBreak();
-		const h1 = createHeadline1(textContent);
+		const br1 = createLineBreak({ id: cuid() });
+		const br2 = createLineBreak({ id: cuid() });
+		const h1 = createHeadline1(textContent, { id: cuid() });
 
 		textContainer.appendChild(br1);
 		textContainer.appendChild(h1);
@@ -193,11 +195,15 @@ export const RecordingTranscriptions = (props: Props) => {
 				textContainer.appendChild(paragraph);
 			}
 			if (content.type === TranscriptContentType.Headline1) {
-				const headline = createHeadline1(content.content);
+				const headline = createHeadline1(content.content, {
+					id: String(content.id),
+				});
 				textContainer.appendChild(headline);
 			}
 			if (content.type === TranscriptContentType.Linebreak) {
-				const linebreak = createLineBreak();
+				const linebreak = createLineBreak({
+					id: String(content.id),
+				});
 				textContainer.appendChild(linebreak);
 			}
 		}
@@ -235,7 +241,7 @@ export const RecordingTranscriptions = (props: Props) => {
 					console.log("element to insert:", update);
 					const treeLength = textContainerRef.current.childNodes.length;
 					props.onAddContent({
-						id: update.id,
+						id: update.id === null ? cuid() : update.id,
 						content: update.content,
 						type: update.type,
 						order: treeLength,
@@ -352,7 +358,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 
 		return {
-			id: dataset.id || "",
+			id: dataset.id || null,
 			content: textContent || "",
 			type: contentType,
 			kind: kind,

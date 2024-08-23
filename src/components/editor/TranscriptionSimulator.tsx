@@ -103,10 +103,8 @@ export const Simulation = {
 	simulateTranscription(
 		textContainer: HTMLDivElement,
 		currentIteration: number,
-		// onUpdateContent: (payload: EditorAddContentAction["payload"]) => void,
 	) {
 		const lastChild = textContainer.lastChild;
-		const treeLength = textContainer.children.length;
 		const isParagraphElement = lastChild?.nodeName === "P";
 		const isBrElement = lastChild?.nodeName === "BR";
 		const isPartial =
@@ -124,7 +122,6 @@ export const Simulation = {
 			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
 
 			if (currentIteration % 5 === 0) {
-				const id = (lastChild as HTMLParagraphElement).dataset.id;
 				(lastChild as HTMLParagraphElement).dataset.partial = "false";
 
 				// Dispatch custom event

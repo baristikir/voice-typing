@@ -1,3 +1,9 @@
+type Dataset = Record<string, string>;
+function createDatasetFields(element: HTMLElement, dataset: Dataset) {
+	Object.entries(dataset).forEach((data) => {
+		element.dataset[String(data[0])] = data[1];
+	});
+}
 function createParagraphText(
 	textContent: string,
 	dataset: Record<string, string>,
@@ -7,22 +13,21 @@ function createParagraphText(
 	paragraph.id = `segment-${new Date().getTime()}`;
 	paragraph.className =
 		"text-justify text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-	Object.entries(dataset).forEach((data) => {
-		paragraph.dataset[String(data[0])] = data[1];
-	});
-
+	createDatasetFields(paragraph, dataset);
 	return paragraph;
 }
 
-function createHeadline1(textContent: string) {
+function createHeadline1(textContent: string, dataset: Dataset) {
 	const h1 = document.createElement("h1");
 	h1.textContent = textContent;
 	h1.className = "text-3xl font-semibold text-gray-950 mt-4";
+	createDatasetFields(h1, dataset);
 	return h1;
 }
 
-function createLineBreak() {
+function createLineBreak(dataset: Dataset) {
 	const br = document.createElement("br");
+	createDatasetFields(br, dataset);
 	return br;
 }
 
