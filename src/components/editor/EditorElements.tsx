@@ -1,10 +1,15 @@
-function createParagraphText(textContent: string, isPartial: boolean) {
+function createParagraphText(
+	textContent: string,
+	dataset: Record<string, string>,
+) {
 	const paragraph = document.createElement("p");
 	paragraph.textContent = " " + textContent;
 	paragraph.id = `segment-${new Date().getTime()}`;
 	paragraph.className =
 		"text-justify text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-	paragraph.dataset.partial = `${isPartial}`;
+	Object.entries(dataset).forEach((data) => {
+		paragraph.dataset[String(data[0])] = data[1];
+	});
 
 	return paragraph;
 }

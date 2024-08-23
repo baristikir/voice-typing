@@ -12,7 +12,7 @@ export enum TranscriptContentType {
   Linebreak = "br",
 }
 export interface TranscriptContent {
-  id: number;
+  id: string;
   type: TranscriptContentType;
   content: string;
   order: number;

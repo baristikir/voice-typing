@@ -16,6 +16,7 @@ import {
 	EditorMode,
 	EditorRemoveContentAction,
 	EditorSetTitleAction,
+	EditorState,
 	EditorUpdateContentAction,
 } from "./useEditor";
 import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
@@ -35,10 +36,18 @@ export type RecorderProcessorMessageData = {
 	sampleRate: number;
 	currentFrame: number;
 };
+enum ElementUpdateKind {
+	Insertion,
+	CharacterUpdate,
+	Deletion,
+}
+type EditorElementUpdate = Omit<TranscriptContent, "order"> & {
+	kind: ElementUpdateKind;
+};
 
 interface Props {
 	editorMode: EditorMode;
-	contents: TranscriptContent[];
+	contents: EditorState["contents"];
 	onTitleChange(payload: EditorSetTitleAction["payload"]): void;
 	onAddContent(payload: EditorAddContentAction["payload"]): void;
 	onUpdateContent(payload: EditorUpdateContentAction["payload"]): void;
@@ -48,6 +57,7 @@ interface Props {
 export const RecordingTranscriptions = (props: Props) => {
 	const textContainerRef = useRef<HTMLDivElement>(null);
 
+	// Sync with db contents on startup
 	useEffect(() => {
 		if (!textContainerRef.current) return;
 		if (props.contents && props.contents.length > 0) {
@@ -62,11 +72,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		let sim_i = 1;
 		let timer = setInterval(async () => {
 			if (IS_SIMULATION_MODE) {
-				Simulation.simulateTranscription(
-					textContainerRef.current,
-					sim_i,
-					props.onAddContent,
-				);
+				Simulation.simulateTranscription(textContainerRef.current, sim_i);
 				sim_i++;
 				return;
 			}
@@ -108,6 +114,45 @@ export const RecordingTranscriptions = (props: Props) => {
 		};
 	}, [props.editorMode]);
 
+	// Text Mutation Observer, for detecting text changes
+	useEffect(() => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+
+		textContainer.addEventListener(
+			"programmaticTextChange",
+			handleProgrammaticTextChange,
+		);
+		const observer = new MutationObserver((mutations) => {
+			handleContentMutations(mutations);
+		});
+
+		observer.observe(textContainer, {
+			attributes: true,
+			childList: true,
+			characterData: true,
+			subtree: true,
+			attributeOldValue: true,
+		});
+
+		return () => {
+			observer.disconnect();
+			textContainer.removeEventListener(
+				"programmaticTextChange",
+				handleProgrammaticTextChange,
+			);
+		};
+	}, []);
+
+	const handleProgrammaticTextChange = (event: Event) => {
+		const element = event.target as HTMLElement;
+		if (isRelevantElement(element)) {
+			processUpdates([
+				createElementUpdate(element, ElementUpdateKind.CharacterUpdate),
+			]);
+		}
+	};
+
 	const insertIntoSelection = (textContent: string) => {
 		const currentSelection = getCurrentCursorState();
 		if (!currentSelection) return;
@@ -121,12 +166,6 @@ export const RecordingTranscriptions = (props: Props) => {
 
 		const br = createLineBreak();
 		textContainer.appendChild(br);
-
-		props.onAddContent({
-			type: TranscriptContentType.Linebreak,
-			content: "\n",
-			order: textContainer.children.length,
-		});
 	};
 
 	const insertHeadline = (textContent: string) => {
@@ -140,12 +179,6 @@ export const RecordingTranscriptions = (props: Props) => {
 		textContainer.appendChild(br1);
 		textContainer.appendChild(h1);
 		textContainer.appendChild(br2);
-
-		props.onAddContent({
-			type: TranscriptContentType.Headline1,
-			content: textContent,
-			order: textContainer.children.length,
-		});
 	};
 
 	const initContents = (contents: TranscriptContent[]) => {
@@ -153,7 +186,10 @@ export const RecordingTranscriptions = (props: Props) => {
 
 		for (const content of contents) {
 			if (content.type === TranscriptContentType.Paragraph) {
-				const paragraph = createParagraphText(content.content, false);
+				const paragraph = createParagraphText(content.content, {
+					partial: String(false),
+					id: String(content.id),
+				});
 				textContainer.appendChild(paragraph);
 			}
 			if (content.type === TranscriptContentType.Headline1) {
@@ -178,20 +214,149 @@ export const RecordingTranscriptions = (props: Props) => {
 			const lastText = textContainer.lastChild as HTMLParagraphElement;
 
 			if (!lastText || lastText.dataset.partial === "false") {
-				const paragraph = createParagraphText(segment.text, segment.isPartial);
+				const paragraph = createParagraphText(segment.text, {
+					partial: String(segment.isPartial),
+				});
 				textContainerRef.current.appendChild(paragraph);
 			} else {
 				lastText.textContent = segment.text;
 				if (!segment.isPartial) {
 					lastText.dataset.partial = "false";
-					props.onAddContent({
-						type: TranscriptContentType.Paragraph,
-						content: lastText.textContent,
-						order: textContainer.children.length,
-					});
 				}
 			}
 		}
+	};
+
+	const processUpdates = (updates: EditorElementUpdate[]) => {
+		updates.forEach((update, index) => {
+			console.log(`[ processUpdates.${index} ] update:`, update);
+			switch (update.kind) {
+				case ElementUpdateKind.Insertion:
+					console.log("element to insert:", update);
+					const treeLength = textContainerRef.current.childNodes.length;
+					props.onAddContent({
+						id: update.id,
+						content: update.content,
+						type: update.type,
+						order: treeLength,
+					});
+					break;
+				case ElementUpdateKind.CharacterUpdate:
+					console.log("element to update:", update);
+					props.onUpdateContent(update);
+					break;
+				case ElementUpdateKind.Deletion:
+					console.log("element to remove:", update);
+					// props.onRemoveContent(update);
+					break;
+			}
+		});
+	};
+
+	const isNodeValidToUpdate = (node: Node, set: Set<Node>) =>
+		node.nodeType === Node.ELEMENT_NODE && !set.has(node);
+
+	const isRelevantElement = (
+		node: Node,
+	): node is HTMLParagraphElement | HTMLHeadingElement | HTMLBRElement =>
+		["P", "H1", "BR"].includes(node.nodeName);
+
+	const processNodeMutation = (
+		node: Node,
+		processedUpdates: Set<Node>,
+		toUpdate: Array<EditorElementUpdate>,
+		kind: ElementUpdateKind,
+	) => {
+		if (
+			isRelevantElement(node) &&
+			isNodeValidToUpdate(node, processedUpdates)
+		) {
+			processedUpdates.add(node);
+			const element = node as HTMLElement;
+			toUpdate.push(createElementUpdate(element, kind));
+		}
+	};
+
+	const handleContentMutations = (mutations: MutationRecord[]) => {
+		const updates: EditorElementUpdate[] = [];
+		const processedElements = new Set<Node>();
+
+		mutations.forEach((mutation) => {
+			if (mutation.type === "childList") {
+				// tracking added html nodes - new paragraphs, new headlines, new text segments
+				mutation.addedNodes.forEach((node) =>
+					processNodeMutation(
+						node,
+						processedElements,
+						updates,
+						ElementUpdateKind.Insertion,
+					),
+				);
+				// tracking removed html nodes - on manual edit
+				mutation.removedNodes.forEach((node) =>
+					processNodeMutation(
+						node,
+						processedElements,
+						updates,
+						ElementUpdateKind.Deletion,
+					),
+				);
+			} else if (mutation.type === "characterData") {
+				console.log("Character update detected");
+				// here we are tracking any text content changes, which can occur manually in
+				// the editor by the user to update the content accordingly in the database.
+				const parentElement = mutation.target.parentElement;
+				if (parentElement && !processedElements.has(parentElement)) {
+					processedElements.add(parentElement);
+					updates.push(
+						createElementUpdate(
+							parentElement,
+							ElementUpdateKind.CharacterUpdate,
+						),
+					);
+				}
+			}
+		});
+
+		console.log(
+			"[ mutations ] updates, processed:",
+			updates,
+			processedElements,
+		);
+
+		if (updates.length > 0) {
+			processUpdates(updates);
+		}
+	};
+
+	const createElementUpdate = (
+		element: HTMLElement,
+		kind: ElementUpdateKind,
+	): EditorElementUpdate => {
+		const { dataset } = element;
+		const elementType = element.nodeName.toLowerCase();
+
+		let textContent = element.textContent;
+		let contentType: TranscriptContentType;
+		switch (elementType) {
+			case "p":
+				contentType = TranscriptContentType.Paragraph;
+				break;
+			case "h1":
+				contentType = TranscriptContentType.Headline1;
+				break;
+			case "br":
+				contentType = TranscriptContentType.Linebreak;
+				textContent = "\n";
+				break;
+		}
+
+		return {
+			id: dataset.id || "",
+			content: textContent || "",
+			type: contentType,
+			kind: kind,
+		};
 	};
 
 	const highlightSearchResults = (query: string) => {

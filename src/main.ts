@@ -3,7 +3,7 @@ import assert from "node:assert";
 import path from "node:path";
 import { registerWhisperIPCHandler } from "./ipc/whisperIPCHandlers";
 import { getWhisperModelPath } from "./utils/whisperModel";
-import { clearDatabase, closeDatabase, setupDatabase } from "./backend/db";
+import { closeDatabase, setupDatabase } from "./backend/db";
 import { registerDbIPCHandler } from "./ipc/dbIPCHandlers";
 
 // Disable security warnings in devtools

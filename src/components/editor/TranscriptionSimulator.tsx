@@ -6,10 +6,10 @@ import {
 	Pause,
 	Play,
 } from "@phosphor-icons/react";
+import cuid from "cuid";
 import { Button } from "../ui/Button";
-import { EditorAddContentAction, EditorMode } from "./useEditor";
+import { EditorMode } from "./useEditor";
 import { createParagraphText } from "./EditorElements";
-import { TranscriptContentType } from "@/shared/models";
 
 // DEVELOPMENT ONLY
 export const TestSimulationControls = ({
@@ -103,7 +103,7 @@ export const Simulation = {
 	simulateTranscription(
 		textContainer: HTMLDivElement,
 		currentIteration: number,
-		onAddContent: (payload: EditorAddContentAction["payload"]) => void,
+		// onUpdateContent: (payload: EditorAddContentAction["payload"]) => void,
 	) {
 		const lastChild = textContainer.lastChild;
 		const treeLength = textContainer.children.length;
@@ -114,21 +114,23 @@ export const Simulation = {
 
 		if (!lastChild || isBrElement || (isParagraphElement && isPartial)) {
 			const segment = this.testSegments[currentIteration % 5];
-			const paragraph = createParagraphText(
-				segment,
-				currentIteration % 5 !== 0,
-			);
+			const paragraph = createParagraphText(segment, {
+				id: cuid(),
+				partial: String(currentIteration % 5 !== 0),
+			});
+
 			textContainer.appendChild(paragraph);
 		} else if (lastChild && isParagraphElement) {
 			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
 
 			if (currentIteration % 5 === 0) {
+				const id = (lastChild as HTMLParagraphElement).dataset.id;
 				(lastChild as HTMLParagraphElement).dataset.partial = "false";
-				onAddContent({
-					type: TranscriptContentType.Paragraph,
-					content: lastChild.textContent,
-					order: treeLength,
-				});
+
+				// Dispatch custom event
+				lastChild.dispatchEvent(
+					new CustomEvent("programmaticTextChange", { bubbles: true }),
+				);
 			}
 		}
 	},

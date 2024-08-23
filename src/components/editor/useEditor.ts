@@ -2,13 +2,16 @@ import { TranscriptContent } from "@/shared/models";
 import { QueryTranscriptByIdData } from "@/utils/rendererElectronAPI";
 import { useReducer } from "react";
 
+type TranscriptId = number;
+type TranscriptContentId = string;
+
 export enum EditorMode {
   DICTATING,
   EDITING,
   SELECTION,
 }
 export type EditorState = {
-  id: number;
+  id: TranscriptId;
   title: string;
   contents: TranscriptContent[];
   mode: EditorMode;
@@ -20,15 +23,15 @@ export type EditorSetTitleAction = {
 };
 export type EditorAddContentAction = {
   type: "ADD_CONTENT";
-  payload: Omit<TranscriptContent, "id"> & { id?: number };
+  payload: TranscriptContent;
 };
 export type EditorRemoveContentAction = {
   type: "REMOVE_CONTENT";
-  payload: number;
+  payload: TranscriptContentId;
 };
 export type EditorUpdateContentAction = {
   type: "UPDATE_CONTENT";
-  payload: TranscriptContent;
+  payload: Omit<TranscriptContent, "order">;
 };
 // Editor State Changes
 export type EditorChangeEditorModeAction = {
@@ -87,14 +90,16 @@ export function useEditor(data: QueryTranscriptByIdData) {
     });
   };
 
-  const onAddContent = (payload: Omit<TranscriptContent, "id">) => {
+  const onAddContent = (
+    payload: TranscriptContent,
+  ) => {
     dispatch({
       type: "ADD_CONTENT",
       payload,
     });
   };
 
-  const onRemoveContent = (payload: number) => {
+  const onRemoveContent = (payload: TranscriptContentId) => {
     dispatch({
       type: "REMOVE_CONTENT",
       payload,

@@ -23,7 +23,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     data: {
       id: number;
       title?: string;
-      contents?: (Omit<TranscriptContent, "id"> & { id?: number })[];
+      contents?: (TranscriptContent & { isNew: boolean })[];
     },
   ) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_UPDATE"], {

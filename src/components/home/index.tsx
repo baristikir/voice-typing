@@ -61,8 +61,8 @@ export function HomeContent(_: Props) {
 							id={item.id}
 							title={item.title}
 							shortDescription={
-								item.contents?.[0]?.content.substring(0, 100) +
-								(item.contents?.[0]?.content.length > 100 ? "..." : "")
+								item.contents?.[0]?.content?.substring(0, 100) +
+								(item.contents?.[0]?.content?.length > 100 ? "..." : "")
 							}
 							lastEdited={item.updatedAt}
 						/>

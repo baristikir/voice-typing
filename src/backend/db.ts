@@ -29,7 +29,7 @@ function initDatabase() {
 
   db.exec(`
       CREATE TABLE IF NOT EXISTS transcript_contents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         transcript_id INTEGER,
         content TEXT,
         content_type TEXT CHECK(content_type IN ('p', 'h1', 'br')),
@@ -77,7 +77,9 @@ interface ITranscriptsDbService {
   updateTranscript(
     id: number,
     title?: string,
-    contents?: (Omit<TranscriptContent, "id"> & { id?: number })[],
+    contents?:
+      | TranscriptContent[]
+      | (Omit<TranscriptContent, "order">)[],
   ): Transcript;
   deleteTranscript(id: number): boolean;
 }
@@ -125,13 +127,13 @@ export const TranscriptsDbService: ITranscriptsDbService = {
 
     const updateContentStmt = db.prepare(`
         UPDATE transcript_contents
-        SET content = ?, content_type = ?, order_num = ?
+        SET content = ?, content_type = ?
         WHERE id = ? AND transcript_id =?
       `);
 
     const insertContentStmt = db.prepare(`
-        INSERT INTO transcript_contents (transcript_id, content, content_type, order_num)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO transcript_contents (transcript_id, id, content, content_type, order_num)
+        VALUES (?, ?, ?, ?, ?)
       `);
 
     const data = db.transaction(() => {
@@ -141,17 +143,19 @@ export const TranscriptsDbService: ITranscriptsDbService = {
 
       if (contents && contents.length > 0) {
         for (const content of contents) {
-          if (content.id) {
+          if (!("order" in content)) {
+            console.log("RECEIVED UPDATE");
             updateContentStmt.run(
               content.content,
               content.type,
-              content.order,
               content.id,
               id,
             );
           } else {
+            console.log("RECEIVE CREATION");
             insertContentStmt.run(
               id,
+              content.id,
               content.content,
               content.type,
               content.order,
