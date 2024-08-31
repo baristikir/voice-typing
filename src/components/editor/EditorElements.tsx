@@ -4,12 +4,11 @@ function createDatasetFields(element: HTMLElement, dataset: Dataset) {
 		element.dataset[String(data[0])] = data[1];
 	});
 }
-function createParagraphText(
-	textContent: string,
-	dataset: Record<string, string>,
-) {
+function createParagraphText(textContent: string, dataset: Record<string, string>) {
 	const paragraph = document.createElement("p");
-	paragraph.textContent = " " + textContent;
+	const textNode = document.createTextNode(textContent);
+	paragraph.appendChild(textNode);
+
 	paragraph.id = `segment-${new Date().getTime()}`;
 	paragraph.className =
 		"text-justify text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
@@ -110,9 +109,7 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 function highlightNode(node: Node, regex: RegExp) {
 	const { nodeType, nodeName } = node;
 	if (nodeType === Node.ELEMENT_NODE && nodeName !== "MARK") {
-		Array.from(node.childNodes).forEach((childNode) =>
-			highlightNode(childNode, regex),
-		);
+		Array.from(node.childNodes).forEach((childNode) => highlightNode(childNode, regex));
 	}
 
 	if (nodeType === Node.TEXT_NODE) {
@@ -154,10 +151,7 @@ function removeHighlightFromNode(node: Node) {
 	if (nodeName === "MARK") {
 		const { parentNode: parent } = node;
 		if (parent) {
-			parent.replaceChild(
-				document.createTextNode(node.textContent || ""),
-				node,
-			);
+			parent.replaceChild(document.createTextNode(node.textContent || ""), node);
 			parent.normalize();
 		}
 
@@ -167,12 +161,7 @@ function removeHighlightFromNode(node: Node) {
 	Array.from(node.childNodes).forEach(removeHighlightFromNode);
 }
 
-function replaceInNode(
-	node: Node,
-	regex: RegExp,
-	replaceText: string,
-	replaceAll: boolean,
-) {
+function replaceInNode(node: Node, regex: RegExp, replaceText: string, replaceAll: boolean) {
 	const { nodeType } = node;
 	if (nodeType === Node.TEXT_NODE) {
 		const { parentNode: parent } = node;
@@ -190,8 +179,7 @@ function replaceInNode(
 		let replaced = false;
 		Array.from(node.childNodes).forEach((child) => {
 			if (replaced && !replaceAll) return;
-			replaced =
-				replaceInNode(child, regex, replaceText, replaceAll) || replaced;
+			replaced = replaceInNode(child, regex, replaceText, replaceAll) || replaced;
 		});
 		return replaced;
 	}

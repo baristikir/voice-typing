@@ -164,73 +164,53 @@ export const RecordingTranscriptions = (props: Props) => {
 		const range = selection.getRangeAt(0);
 		const br = createLineBreak({ id: cuid() });
 
-		let insertAfterNode: Node | null = null;
 		let currentNode = range.startContainer;
+		let offset = range.startOffset;
 
-		if (
-			currentNode.nodeType === Node.TEXT_NODE &&
-			range.startOffset === currentNode.textContent?.length
-		) {
+		while (currentNode && currentNode.nodeName !== "P") {
 			currentNode = currentNode.parentNode;
 		}
 
-		// find closest parent thats a direct child of textContainer
-		while (currentNode && currentNode !== textContainer) {
-			if (currentNode.parentNode === textContainer) {
-				if (range.startOffset === currentNode.childNodes.length) {
-					insertAfterNode = currentNode;
-				} else {
-					const endPart = currentNode.cloneNode(false);
-					while (currentNode.childNodes[range.startOffset]) {
-						endPart.appendChild(currentNode.childNodes[range.startOffset]);
-					}
+		if (!currentNode) return;
 
-					textContainer.insertBefore(endPart, currentNode.nextSibling);
-					textContainer.insertBefore(br, endPart);
-					range.setStartAfter(br);
-					range.setEndAfter(br);
-					selection.removeAllRanges();
-					selection.addRange(range);
-					handleContentMutations([
-						{
-							type: "childList",
-							addedNodes: [br, endPart],
-							removedNodes: [],
-							target: textContainerRef.current,
-						} as unknown as MutationRecord,
-						{
-							type: "characterData",
-							target: currentNode,
-						} as unknown as MutationRecord,
-					]);
-					return;
-				}
-				break;
-			}
-			currentNode = currentNode.parentNode;
-		}
+		const paragraph = currentNode as HTMLParagraphElement;
 
-		if (insertAfterNode) {
-			console.log(insertAfterNode);
-			// insert linebreak and rest after it
-			textContainer.insertBefore(br, insertAfterNode.nextSibling);
+		if (offset === paragraph.textContent.length) {
+			// Case 1: Cursor is at the end of the paragraph
+			const newParagraph = createParagraphText("\u200B", {
+				id: cuid(),
+				partial: "false",
+			});
+
+			textContainer.insertBefore(br, paragraph.nextSibling);
+			textContainer.insertBefore(newParagraph, br.nextSibling);
+
+			range.setStart(newParagraph.firstChild, 0);
+			range.setEnd(newParagraph.firstChild, 0);
+			selection.removeAllRanges();
+			selection.addRange(range);
+
+			newParagraph.focus();
 		} else {
-			// when no insertion point was found, append to the end
-			textContainer.appendChild(br);
-		}
+			// Case 2: Cursor is somewhere in the middle of the paragraph
+			const secondHalf = paragraph.textContent.slice(offset);
+			paragraph.textContent = paragraph.textContent.slice(0, offset);
 
-		range.setStartAfter(br);
-		range.setEndAfter(br);
-		selection.removeAllRanges();
-		selection.addRange(range);
-		handleContentMutations([
-			{
-				type: "childList",
-				addedNodes: [br],
-				removedNodes: [],
-				target: textContainerRef.current,
-			} as unknown as MutationRecord,
-		]);
+			const newParagraph = createParagraphText(secondHalf, {
+				id: cuid(),
+				partial: "false",
+			});
+
+			textContainer.insertBefore(br, paragraph.nextSibling);
+			textContainer.insertBefore(newParagraph, br.nextSibling);
+
+			if (newParagraph.firstChild) {
+				range.setStart(newParagraph.firstChild, 0);
+				range.setEnd(newParagraph.firstChild, 0);
+				selection.removeAllRanges();
+				selection.addRange(range);
+			}
+		}
 	};
 
 	const insertHeadline = (textContent: string) => {
@@ -435,17 +415,18 @@ export const RecordingTranscriptions = (props: Props) => {
 		});
 
 		// Check for and remove any empty paragraphs
-		if (textContainerRef.current) {
-			const emptyParagraphs = Array.from(textContainerRef.current.querySelectorAll("p")).filter(
-				(p) => isElementEmpty(p) && !processedElements.has(p),
-			);
+		// if (textContainerRef.current) {
+		// 	const emptyParagraphs = Array.from(textContainerRef.current.querySelectorAll("p")).filter(
+		// 		(p) => isElementEmpty(p) && !processedElements.has(p),
+		// 	);
 
-			emptyParagraphs.forEach((p) => {
-				if (removeEmptyElement(p)) {
-					updates.push(createElementUpdate(p, ElementUpdateKind.Deletion));
-				}
-			});
-		}
+		// 	emptyParagraphs.forEach((p) => {
+		// 		if (removeEmptyElement(p)) {
+		// 			console.log("removing empty paragraph.", p);
+		// 			updates.push(createElementUpdate(p, ElementUpdateKind.Deletion));
+		// 		}
+		// 	});
+		// }
 
 		if (updates.length > 0) {
 			processUpdates(updates);
