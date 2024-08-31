@@ -3,12 +3,17 @@ import { Link } from "react-router-dom";
 import { RecorderProcessorMessageData } from "./RecordingTranscriptions";
 import { Button } from "../ui/Button";
 import { assert } from "../utils/assert";
+import { EditorMode } from "./useEditor";
 
-export const RecordControls = () => {
+interface Props {
+	onEditorModeChange(payload: EditorMode): void;
+}
+export const RecordControls = (props: Props) => {
 	const [isRecording, setIsRecording] = useState(false);
 	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	const recordAudio = async () => {
+		props.onEditorModeChange(EditorMode.DICTATING);
 		let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
 		try {
@@ -54,6 +59,7 @@ export const RecordControls = () => {
 			worklet.connect(audioContext.destination);
 
 			const stopRecording = () => {
+				props.onEditorModeChange(EditorMode.EDITING);
 				source.disconnect();
 				worklet.disconnect();
 

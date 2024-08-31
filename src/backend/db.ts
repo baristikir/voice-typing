@@ -68,6 +68,11 @@ export function clearDatabase() {
   initDatabase();
 }
 
+type UpdateTranscriptContent =
+  & (TranscriptContent | Omit<TranscriptContent, "order">)
+  & {
+    actionKind: "insert" | "update" | "delete";
+  };
 interface ITranscriptsDbService {
   getAllTranscripts(): Transcript[];
   getTranscriptById(id: number): Transcript;
@@ -77,9 +82,7 @@ interface ITranscriptsDbService {
   updateTranscript(
     id: number,
     title?: string,
-    contents?:
-      | TranscriptContent[]
-      | (Omit<TranscriptContent, "order">)[],
+    contents?: UpdateTranscriptContent[],
   ): Transcript;
   deleteTranscript(id: number): boolean;
 }
@@ -136,6 +139,11 @@ export const TranscriptsDbService: ITranscriptsDbService = {
         VALUES (?, ?, ?, ?, ?)
       `);
 
+    const deleteContentStmt = db.prepare(`
+        DELETE FROM transcript_contents
+        WHERE id = ? AND transcript_id = ?
+      `);
+
     const data = db.transaction(() => {
       if (title) {
         updateTranscriptStmt.run(title, id);
@@ -143,23 +151,30 @@ export const TranscriptsDbService: ITranscriptsDbService = {
 
       if (contents && contents.length > 0) {
         for (const content of contents) {
-          if (!("order" in content)) {
-            console.log("RECEIVED UPDATE");
-            updateContentStmt.run(
-              content.content,
-              content.type,
-              content.id,
-              id,
-            );
-          } else {
-            console.log("RECEIVE CREATION");
-            insertContentStmt.run(
-              id,
-              content.id,
-              content.content,
-              content.type,
-              content.order,
-            );
+          switch (content.actionKind) {
+            case "insert":
+              insertContentStmt.run(
+                id,
+                content.id,
+                content.content,
+                content.type,
+                (content as TranscriptContent).order,
+              );
+              break;
+            case "update":
+              updateContentStmt.run(
+                content.content,
+                content.type,
+                content.id,
+                id,
+              );
+              break;
+            case "delete":
+              deleteContentStmt.run(
+                content.id,
+                id,
+              );
+              break;
           }
         }
       }

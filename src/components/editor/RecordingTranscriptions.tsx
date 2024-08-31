@@ -15,7 +15,6 @@ import {
 	EditorAddContentAction,
 	EditorMode,
 	EditorRemoveContentAction,
-	EditorSetTitleAction,
 	EditorState,
 	EditorUpdateContentAction,
 } from "./useEditor";
@@ -50,7 +49,6 @@ type EditorElementUpdate = Omit<TranscriptContent, "order"> & {
 interface Props {
 	editorMode: EditorMode;
 	contents: EditorState["contents"];
-	onTitleChange(payload: EditorSetTitleAction["payload"]): void;
 	onAddContent(payload: EditorAddContentAction["payload"]): void;
 	onUpdateContent(payload: EditorUpdateContentAction["payload"]): void;
 	onRemoveContent(payload: EditorRemoveContentAction["payload"]): void;
@@ -121,10 +119,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		textContainer.addEventListener(
-			"programmaticTextChange",
-			handleProgrammaticTextChange,
-		);
+		textContainer.addEventListener("programmaticTextChange", handleProgrammaticTextChange);
 		const observer = new MutationObserver((mutations) => {
 			handleContentMutations(mutations);
 		});
@@ -137,23 +132,14 @@ export const RecordingTranscriptions = (props: Props) => {
 			attributeOldValue: true,
 		});
 
+		textContainer.addEventListener("keydown", handleKeyDown);
+
 		return () => {
 			observer.disconnect();
-			textContainer.removeEventListener(
-				"programmaticTextChange",
-				handleProgrammaticTextChange,
-			);
+			textContainer.removeEventListener("keydown", handleKeyDown);
+			textContainer.removeEventListener("programmaticTextChange", handleProgrammaticTextChange);
 		};
 	}, []);
-
-	const handleProgrammaticTextChange = (event: Event) => {
-		const element = event.target as HTMLElement;
-		if (isRelevantElement(element)) {
-			processUpdates([
-				createElementUpdate(element, ElementUpdateKind.CharacterUpdate),
-			]);
-		}
-	};
 
 	const insertIntoSelection = (textContent: string) => {
 		const currentSelection = getCurrentCursorState();
@@ -168,6 +154,83 @@ export const RecordingTranscriptions = (props: Props) => {
 
 		const br = createLineBreak({ id: cuid() });
 		textContainer.appendChild(br);
+	};
+
+	const insertLineBreakAfterSelection = () => {
+		const textContainer = textContainerRef.current;
+		const selection = window.getSelection();
+		if (!textContainer || !selection) return;
+
+		const range = selection.getRangeAt(0);
+		const br = createLineBreak({ id: cuid() });
+
+		let insertAfterNode: Node | null = null;
+		let currentNode = range.startContainer;
+
+		if (
+			currentNode.nodeType === Node.TEXT_NODE &&
+			range.startOffset === currentNode.textContent?.length
+		) {
+			currentNode = currentNode.parentNode;
+		}
+
+		// find closest parent thats a direct child of textContainer
+		while (currentNode && currentNode !== textContainer) {
+			if (currentNode.parentNode === textContainer) {
+				if (range.startOffset === currentNode.childNodes.length) {
+					insertAfterNode = currentNode;
+				} else {
+					const endPart = currentNode.cloneNode(false);
+					while (currentNode.childNodes[range.startOffset]) {
+						endPart.appendChild(currentNode.childNodes[range.startOffset]);
+					}
+
+					textContainer.insertBefore(endPart, currentNode.nextSibling);
+					textContainer.insertBefore(br, endPart);
+					range.setStartAfter(br);
+					range.setEndAfter(br);
+					selection.removeAllRanges();
+					selection.addRange(range);
+					handleContentMutations([
+						{
+							type: "childList",
+							addedNodes: [br, endPart],
+							removedNodes: [],
+							target: textContainerRef.current,
+						} as unknown as MutationRecord,
+						{
+							type: "characterData",
+							target: currentNode,
+						} as unknown as MutationRecord,
+					]);
+					return;
+				}
+				break;
+			}
+			currentNode = currentNode.parentNode;
+		}
+
+		if (insertAfterNode) {
+			console.log(insertAfterNode);
+			// insert linebreak and rest after it
+			textContainer.insertBefore(br, insertAfterNode.nextSibling);
+		} else {
+			// when no insertion point was found, append to the end
+			textContainer.appendChild(br);
+		}
+
+		range.setStartAfter(br);
+		range.setEndAfter(br);
+		selection.removeAllRanges();
+		selection.addRange(range);
+		handleContentMutations([
+			{
+				type: "childList",
+				addedNodes: [br],
+				removedNodes: [],
+				target: textContainerRef.current,
+			} as unknown as MutationRecord,
+		]);
 	};
 
 	const insertHeadline = (textContent: string) => {
@@ -233,12 +296,26 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
+	// Prevent default behavior of inserting <br> in empty paragraphs
+	const handleKeyDown = (event: KeyboardEvent) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			insertLineBreakAfterSelection();
+		}
+	};
+
+	const handleProgrammaticTextChange = (event: Event) => {
+		const element = event.target as HTMLElement;
+		if (isRelevantElement(element)) {
+			processUpdates([createElementUpdate(element, ElementUpdateKind.CharacterUpdate)]);
+		}
+	};
+
 	const processUpdates = (updates: EditorElementUpdate[]) => {
 		updates.forEach((update, index) => {
 			console.log(`[ processUpdates.${index} ] update:`, update);
 			switch (update.kind) {
 				case ElementUpdateKind.Insertion:
-					console.log("element to insert:", update);
 					const treeLength = textContainerRef.current.childNodes.length;
 					props.onAddContent({
 						id: update.id === null ? cuid() : update.id,
@@ -248,12 +325,16 @@ export const RecordingTranscriptions = (props: Props) => {
 					});
 					break;
 				case ElementUpdateKind.CharacterUpdate:
-					console.log("element to update:", update);
 					props.onUpdateContent(update);
 					break;
 				case ElementUpdateKind.Deletion:
-					console.log("element to remove:", update);
-					// props.onRemoveContent(update);
+					if (!update.id) break;
+					props.onRemoveContent({
+						id: update.id,
+						content: update.content,
+						type: update.type,
+						order: 0,
+					});
 					break;
 			}
 		});
@@ -265,7 +346,24 @@ export const RecordingTranscriptions = (props: Props) => {
 	const isRelevantElement = (
 		node: Node,
 	): node is HTMLParagraphElement | HTMLHeadingElement | HTMLBRElement =>
-		["P", "H1", "BR"].includes(node.nodeName);
+		["P", "H1", "BR", "#text"].includes(node.nodeName);
+
+	const hasEmptyParentElement = (node: Node) =>
+		node.parentElement &&
+		node.parentElement.tagName === "P" &&
+		node.parentElement.textContent?.trim() === "";
+
+	const isElementEmpty = (element: HTMLElement) =>
+		element.nodeName === "P" &&
+		(element.textContent?.trim() === "" || element.innerHTML === "<br>");
+
+	const removeEmptyElement = (element: HTMLElement) => {
+		if (element.parentNode) {
+			element.parentNode.removeChild(element);
+			return true;
+		}
+		return false;
+	};
 
 	const processNodeMutation = (
 		node: Node,
@@ -273,13 +371,40 @@ export const RecordingTranscriptions = (props: Props) => {
 		toUpdate: Array<EditorElementUpdate>,
 		kind: ElementUpdateKind,
 	) => {
-		if (
-			isRelevantElement(node) &&
-			isNodeValidToUpdate(node, processedUpdates)
-		) {
+		if (isRelevantElement(node) && isNodeValidToUpdate(node, processedUpdates)) {
 			processedUpdates.add(node);
 			const element = node as HTMLElement;
+			if (kind === ElementUpdateKind.Insertion && isElementEmpty(node)) {
+				return;
+			}
+
 			toUpdate.push(createElementUpdate(element, kind));
+			// if (kind === ElementUpdateKind.Insertion && !isElementEmpty(node)) {
+			// } else if (kind !== ElementUpdateKind.Insertion) {
+			// 	toUpdate.push(createElementUpdate(element, kind));
+			// }
+		}
+	};
+
+	const processCharacterDataMutation = (
+		node: Node,
+		processedUpdates: Set<Node>,
+		toUpdate: Array<EditorElementUpdate>,
+	) => {
+		const parentElement = node.parentElement;
+		if (!parentElement) {
+			return;
+		}
+
+		if (isRelevantElement(parentElement) && !processedUpdates.has(parentElement)) {
+			processedUpdates.add(parentElement);
+
+			if (isElementEmpty(parentElement)) {
+				removeEmptyElement(parentElement);
+				toUpdate.push(createElementUpdate(parentElement, ElementUpdateKind.Deletion));
+			} else {
+				toUpdate.push(createElementUpdate(parentElement, ElementUpdateKind.CharacterUpdate));
+			}
 		}
 	};
 
@@ -290,45 +415,37 @@ export const RecordingTranscriptions = (props: Props) => {
 		mutations.forEach((mutation) => {
 			if (mutation.type === "childList") {
 				// tracking added html nodes - new paragraphs, new headlines, new text segments
-				mutation.addedNodes.forEach((node) =>
-					processNodeMutation(
-						node,
-						processedElements,
-						updates,
-						ElementUpdateKind.Insertion,
-					),
-				);
+				mutation.addedNodes.forEach((node) => {
+					if (isRelevantElement(node) && hasEmptyParentElement(node as HTMLElement)) {
+						node.parentElement.removeChild(node);
+						return;
+					}
+
+					processNodeMutation(node, processedElements, updates, ElementUpdateKind.Insertion);
+				});
+
 				// tracking removed html nodes - on manual edit
 				mutation.removedNodes.forEach((node) =>
-					processNodeMutation(
-						node,
-						processedElements,
-						updates,
-						ElementUpdateKind.Deletion,
-					),
+					processNodeMutation(node, processedElements, updates, ElementUpdateKind.Deletion),
 				);
 			} else if (mutation.type === "characterData") {
-				console.log("Character update detected");
-				// here we are tracking any text content changes, which can occur manually in
-				// the editor by the user to update the content accordingly in the database.
-				const parentElement = mutation.target.parentElement;
-				if (parentElement && !processedElements.has(parentElement)) {
-					processedElements.add(parentElement);
-					updates.push(
-						createElementUpdate(
-							parentElement,
-							ElementUpdateKind.CharacterUpdate,
-						),
-					);
-				}
+				// tracking character/text changes inside content editable paragraphs
+				processCharacterDataMutation(mutation.target, processedElements, updates);
 			}
 		});
 
-		console.log(
-			"[ mutations ] updates, processed:",
-			updates,
-			processedElements,
-		);
+		// Check for and remove any empty paragraphs
+		if (textContainerRef.current) {
+			const emptyParagraphs = Array.from(textContainerRef.current.querySelectorAll("p")).filter(
+				(p) => isElementEmpty(p) && !processedElements.has(p),
+			);
+
+			emptyParagraphs.forEach((p) => {
+				if (removeEmptyElement(p)) {
+					updates.push(createElementUpdate(p, ElementUpdateKind.Deletion));
+				}
+			});
+		}
 
 		if (updates.length > 0) {
 			processUpdates(updates);
@@ -372,16 +489,10 @@ export const RecordingTranscriptions = (props: Props) => {
 		Array.from(textContainer.childNodes).forEach(removeHighlightFromNode);
 
 		const regex = new RegExp(query, "gi");
-		Array.from(textContainer.childNodes).forEach((node) =>
-			highlightNode(node, regex),
-		);
+		Array.from(textContainer.childNodes).forEach((node) => highlightNode(node, regex));
 	};
 
-	const replaceSearchResults = (
-		replaceText: string,
-		searchText: string,
-		replaceAll: boolean,
-	) => {
+	const replaceSearchResults = (replaceText: string, searchText: string, replaceAll: boolean) => {
 		const textContainer = textContainerRef.current;
 		if (!replaceText || !searchText || !textContainerRef.current) return;
 
@@ -397,11 +508,7 @@ export const RecordingTranscriptions = (props: Props) => {
 	const handleSearch = (query: string) => {
 		highlightSearchResults(query);
 	};
-	const handleReplace = (
-		replaceText: string,
-		searchText: string,
-		replaceAll: boolean,
-	) => {
+	const handleReplace = (replaceText: string, searchText: string, replaceAll: boolean) => {
 		replaceSearchResults(replaceText, searchText, replaceAll);
 	};
 
@@ -416,18 +523,13 @@ export const RecordingTranscriptions = (props: Props) => {
 	return (
 		<div>
 			<StatusBar editorMode={props.editorMode} />
-			<EditorControls
-				onSearchQuery={handleSearch}
-				onReplaceResults={handleReplace}
-			/>
+			<EditorControls onSearchQuery={handleSearch} onReplaceResults={handleReplace} />
 			<div className="flex flex-col gap-2">
 				<TestSimulationControls
 					editorMode={props.editorMode}
 					pauseSimulation={pauseDictation}
 					resumeSimulation={resumeDictation}
-					exportToClipboard={() =>
-						copyTextContentsToClipboard(textContainerRef.current)
-					}
+					exportToClipboard={() => copyTextContentsToClipboard(textContainerRef.current)}
 					insertIntoSelection={insertIntoSelection}
 					insertParagraph={insertLineBreak}
 					insertHeadline={insertHeadline}
@@ -435,6 +537,7 @@ export const RecordingTranscriptions = (props: Props) => {
 				<div
 					contentEditable={props.editorMode !== EditorMode.DICTATING}
 					ref={textContainerRef}
+					className="focus:outline-none"
 				></div>
 			</div>
 		</div>

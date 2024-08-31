@@ -4,6 +4,7 @@ import { RecordingTranscriptions } from "./RecordingTranscriptions";
 import { TitleWithInput } from "./TitleWithInput";
 import {
 	EditorAddContentAction,
+	EditorRemoveContentAction,
 	EditorUpdateContentAction,
 	useEditor,
 } from "./useEditor";
@@ -22,9 +23,9 @@ export const Editor = (props: Props) => {
 	) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,
-			contents: [{ ...payload }],
+			contents: [{ ...payload, actionKind: "insert" }],
 		});
-		console.log("api.updateTranscript(new): ", transcript);
+		console.log("api.updateTranscript(insert): ", transcript);
 
 		const recentContent = transcript.contents[transcript.contents.length - 1];
 		handlers.onAddContent(recentContent);
@@ -35,7 +36,7 @@ export const Editor = (props: Props) => {
 	) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,
-			contents: [{ ...payload }],
+			contents: [{ ...payload, actionKind: "update" }],
 		});
 		console.log("api.updateTranscript(update): ", transcript);
 
@@ -43,20 +44,30 @@ export const Editor = (props: Props) => {
 		handlers.onUpdateContent(recentContent);
 	};
 
+	const handleRemoveContent = async (
+		payload: EditorRemoveContentAction["payload"],
+	) => {
+		const transcript = await api.updateTranscript({
+			id: state.id,
+			contents: [{ ...payload, actionKind: "delete" }],
+		});
+		console.log("api.updateTranscript(delete): ", transcript);
+		handlers.onRemoveContent(payload);
+	};
+
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
 			<div className="flex items-center justify-between w-full">
 				<TitleWithInput title={props.data.title} />
-				<RecordControls />
+				<RecordControls onEditorModeChange={handlers.onModeChange} />
 			</div>
 			<div>
 				<RecordingTranscriptions
 					editorMode={state.mode}
 					contents={state.contents as TranscriptContent[]}
-					onTitleChange={handlers.onTitleChange}
 					onAddContent={handleAddContent}
 					onUpdateContent={handleUpdateContent}
-					onRemoveContent={handlers.onRemoveContent}
+					onRemoveContent={handleRemoveContent}
 					onEditorModeChange={handlers.onModeChange}
 				/>
 			</div>

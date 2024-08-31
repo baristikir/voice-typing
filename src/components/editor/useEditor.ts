@@ -3,7 +3,6 @@ import { QueryTranscriptByIdData } from "@/utils/rendererElectronAPI";
 import { useReducer } from "react";
 
 type TranscriptId = number;
-type TranscriptContentId = string;
 
 export enum EditorMode {
   DICTATING,
@@ -27,7 +26,7 @@ export type EditorAddContentAction = {
 };
 export type EditorRemoveContentAction = {
   type: "REMOVE_CONTENT";
-  payload: TranscriptContentId;
+  payload: TranscriptContent;
 };
 export type EditorUpdateContentAction = {
   type: "UPDATE_CONTENT";
@@ -55,7 +54,7 @@ function editorReducer(state: EditorState, action: EditorAction) {
       return {
         ...state,
         contents: state.contents.filter(
-          (content) => content.id !== action.payload,
+          (content) => content.id !== action.payload.id,
         ),
       };
     case "UPDATE_CONTENT":
@@ -99,7 +98,7 @@ export function useEditor(data: QueryTranscriptByIdData) {
     });
   };
 
-  const onRemoveContent = (payload: TranscriptContentId) => {
+  const onRemoveContent = (payload: TranscriptContent) => {
     dispatch({
       type: "REMOVE_CONTENT",
       payload,
