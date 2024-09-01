@@ -23,7 +23,7 @@ import { StatusBar } from "./StatusBar";
 import { EditorControls } from "./EditorControls";
 import cuid from "cuid";
 
-const IS_SIMULATION_MODE = true;
+const IS_SIMULATION_MODE = false;
 const TRANSCRIPTION_RATE_IN_MS = 500;
 
 async function getLatestTranscription() {
@@ -267,13 +267,18 @@ export const RecordingTranscriptions = (props: Props) => {
 
 			if (!lastText || lastText.dataset.partial === "false") {
 				const paragraph = createParagraphText(segment.text, {
+					id: cuid(),
 					partial: String(segment.isPartial),
 				});
-				textContainerRef.current.appendChild(paragraph);
+
+				textContainer.appendChild(paragraph);
 			} else {
 				lastText.textContent = segment.text;
+
 				if (!segment.isPartial) {
 					lastText.dataset.partial = "false";
+					// Dispatch custom event for text update change
+					lastText.dispatchEvent(new CustomEvent("programmaticTextChange", { bubbles: true }));
 				}
 			}
 		}
