@@ -234,18 +234,21 @@ export const RecordingTranscriptions = (props: Props) => {
 				const paragraph = createParagraphText(content.content, {
 					partial: String(false),
 					id: String(content.id),
+					order: String(content.order),
 				});
 				textContainer.appendChild(paragraph);
 			}
 			if (content.type === TranscriptContentType.Headline1) {
 				const headline = createHeadline1(content.content, {
 					id: String(content.id),
+					order: String(content.order),
 				});
 				textContainer.appendChild(headline);
 			}
 			if (content.type === TranscriptContentType.Linebreak) {
 				const linebreak = createLineBreak({
 					id: String(content.id),
+					order: String(content.order),
 				});
 				textContainer.appendChild(linebreak);
 			}
