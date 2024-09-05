@@ -9,7 +9,7 @@ import {
 import cuid from "cuid";
 import { Button } from "../ui/Button";
 import { EditorMode } from "./useEditor";
-import { createParagraphText } from "./EditorElements";
+import { createParagraphText, createSpanText } from "./EditorElements";
 
 // DEVELOPMENT ONLY
 export const TestSimulationControls = ({
@@ -100,24 +100,45 @@ export const Simulation = {
 		"Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim.",
 		"Pellentesque congue. Ut in risus volutpat libero pharetra tempor.",
 	],
-	simulateTranscription(
-		textContainer: HTMLDivElement,
-		currentIteration: number,
-	) {
+	simulateTranscription(textContainer: HTMLDivElement, currentIteration: number) {
 		const lastChild = textContainer.lastChild;
 		const isParagraphElement = lastChild?.nodeName === "P";
 		const isBrElement = lastChild?.nodeName === "BR";
-		const isPartial =
-			(lastChild as HTMLParagraphElement)?.dataset.partial === "false";
 
-		if (!lastChild || isBrElement || (isParagraphElement && isPartial)) {
+		if (!lastChild || isBrElement) {
 			const segment = this.testSegments[currentIteration % 5];
-			const paragraph = createParagraphText(segment, {
+			const newParagraph = createParagraphText("", {});
+			const span = createSpanText(segment, {
 				id: cuid(),
 				partial: String(currentIteration % 5 !== 0),
 			});
 
-			textContainer.appendChild(paragraph);
+			newParagraph.appendChild(span);
+			textContainer.appendChild(newParagraph);
+			return;
+		}
+
+		if (isParagraphElement) {
+			const hasSpanChild = lastChild.lastChild?.nodeName === "SPAN";
+			const isPartial = (lastChild.lastChild as HTMLSpanElement)?.dataset?.partial === "false";
+
+			if (hasSpanChild) {
+			}
+		}
+
+		if (!lastChild || isBrElement) {
+			const segment = this.testSegments[currentIteration % 5];
+			const span = createSpanText(segment, {
+				id: cuid(),
+				partial: String(currentIteration % 5 !== 0),
+			});
+
+			if (isParagraphElement) {
+				textContainer.lastChild.appendChild(span);
+				return;
+			}
+
+			textContainer.appendChild(span);
 		} else if (lastChild && isParagraphElement) {
 			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
 
@@ -125,9 +146,7 @@ export const Simulation = {
 				(lastChild as HTMLParagraphElement).dataset.partial = "false";
 
 				// Dispatch custom event
-				lastChild.dispatchEvent(
-					new CustomEvent("programmaticTextChange", { bubbles: true }),
-				);
+				lastChild.dispatchEvent(new CustomEvent("programmaticTextChange", { bubbles: true }));
 			}
 		}
 	},
