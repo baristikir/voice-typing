@@ -19,12 +19,14 @@ class RealtimeSpeechToTextWhisper
   ~RealtimeSpeechToTextWhisper();
   void Start(RealtimeSpeechToTextWhisper* self);
   void Stop(RealtimeSpeechToTextWhisper* self);
+  void ClearAudioData();
   void AddAudioData(const std::vector<float>& new_data);
   std::vector<transcribed_segment> GetTranscribedText();
 
  private:
   struct whisper_context* ctx;
   std::atomic<bool> is_running;
+  std::atomic<bool> is_clear_audio;
   std::vector<float> s_queued_pcmf32;
   std::vector<transcribed_segment> s_transcribed_segments;
   std::mutex s_mutex;  // for accessing shared variables from both main thread and worker thread

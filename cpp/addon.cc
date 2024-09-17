@@ -13,6 +13,7 @@ class STTAddon : public Napi::ObjectWrap<STTAddon>
   Napi::Value Start(const Napi::CallbackInfo& info);
   Napi::Value Stop(const Napi::CallbackInfo& info);
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
+  Napi::Value ClearAudioData(const Napi::CallbackInfo& info);
   Napi::Value GetTranscribedText(const Napi::CallbackInfo& info);
   void Destroy(const Napi::CallbackInfo& info);
 };
@@ -25,6 +26,7 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
       {InstanceMethod<&STTAddon::Start>("start"),
        InstanceMethod<&STTAddon::Stop>("stop"),
        InstanceMethod<&STTAddon::AddAudioData>("addAudioData"),
+       InstanceMethod<&STTAddon::ClearAudioData>("clearAudioData"),
        InstanceMethod<&STTAddon::GetTranscribedText>("getTranscribedText"),
        InstanceMethod<&STTAddon::Destroy>("destroy")});
 
@@ -117,6 +119,20 @@ Napi::Value STTAddon::Stop(const Napi::CallbackInfo& info)
   try
   {
     instance->Stop(instance);
+  }
+  catch(const std::exception& e)
+  {
+    return Napi::Number::New(info.Env(), 0);
+  }
+  
+  return Napi::Number::New(info.Env(), 1);
+}
+
+Napi::Value STTAddon::ClearAudioData(const Napi::CallbackInfo& info) 
+{
+  try
+  {
+    instance->ClearAudioData();
   }
   catch(const std::exception& e)
   {

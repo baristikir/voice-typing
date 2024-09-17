@@ -108,6 +108,7 @@ RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path
   fprintf(stdout, "whisper initialized\n");
   fprintf(stdout, "Hardware concurrency: %u\n", std::thread::hardware_concurrency());
   is_running = true;
+  is_clear_audio = false;
   worker = std::thread(&RealtimeSpeechToTextWhisper::Run, this);
   t_last_iter = std::chrono::high_resolution_clock::now();
 }
@@ -123,6 +124,14 @@ void RealtimeSpeechToTextWhisper::Stop(RealtimeSpeechToTextWhisper* self)
 {
   self->is_running = false;
   self->worker.join();
+}
+
+void RealtimeSpeechToTextWhisper::ClearAudioData()
+{
+  std::lock_guard<std::mutex> lock(s_mutex);
+  
+  is_clear_audio = true;
+  s_queued_pcmf32.clear();
 }
 
 RealtimeSpeechToTextWhisper::~RealtimeSpeechToTextWhisper()
@@ -231,6 +240,15 @@ void RealtimeSpeechToTextWhisper::Run()
 
   /* Processing loop */
   while (is_running) {
+    {
+      std::lock_guard<std::mutex> lock(s_mutex);
+      
+      if(is_clear_audio) {
+        pcmf32.clear();
+        is_clear_audio = false;
+      }
+    }
+
     {
       std::unique_lock<std::mutex> lock(s_mutex);
 
