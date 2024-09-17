@@ -7,9 +7,9 @@ export interface Transcript {
 }
 
 export enum TranscriptContentType {
-  Paragraph = "p",
-  Headline1 = "h1",
-  Linebreak = "br",
+  Text = "text",
+  Headline1 = "headline",
+  Linebreak = "linebreak",
 }
 export interface TranscriptContent {
   id: string;

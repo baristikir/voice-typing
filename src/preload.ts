@@ -11,8 +11,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stop: () => ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_STOP"]),
   addAudioData: (data: any[]) =>
     ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_ADD_AUDIO"], data),
-  getTranscription: () =>
-    ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIPTION"]),
+  getTranscribedText: () =>
+    ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIBED_TEXT"]),
   queryTranscripts: () =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_GET_ALL"]),
   queryTranscriptById: (id: string) =>
@@ -31,4 +31,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     }),
   deleteTranscript: (id: number) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_DELETE"], id),
+  saveTranscriptContents: (data: {
+    id: number;
+    contents: TranscriptContent[];
+  }) => ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_SAVE_CONTENTS"], data),
 });

@@ -1,10 +1,10 @@
 import { api, QueryTranscriptByIdData } from "@/utils/rendererElectronAPI";
-import { RecordControls } from "./RecordControls";
+import { EditorHeader } from "./EditorHeader";
 import { RecordingTranscriptions } from "./RecordingTranscriptions";
-import { TitleWithInput } from "./TitleWithInput";
 import {
 	EditorAddContentAction,
 	EditorRemoveContentAction,
+	EditorSaveContentsAction,
 	EditorUpdateContentAction,
 	useEditor,
 } from "./useEditor";
@@ -18,9 +18,7 @@ export const Editor = (props: Props) => {
 	const { state, ...handlers } = useEditor(props.data);
 	// console.log("[ Editor ] editor state: ", state);
 
-	const handleAddContent = async (
-		payload: EditorAddContentAction["payload"],
-	) => {
+	const handleAddContent = async (payload: EditorAddContentAction["payload"]) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,
 			contents: [{ ...payload, actionKind: "insert" }],
@@ -31,9 +29,17 @@ export const Editor = (props: Props) => {
 		handlers.onAddContent(recentContent);
 	};
 
-	const handleUpdateContent = async (
-		payload: EditorUpdateContentAction["payload"],
-	) => {
+	const handleUpdateTranscript = async (payload: string) => {
+		const transcript = await api.updateTranscript({
+			id: state.id,
+			title: payload,
+		});
+		console.log("api.updateTranscript(title_update): ", transcript);
+
+		handlers.onTitleChange(transcript.title);
+	};
+
+	const handleUpdateContent = async (payload: EditorUpdateContentAction["payload"]) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,
 			contents: [{ ...payload, actionKind: "update" }],
@@ -44,9 +50,7 @@ export const Editor = (props: Props) => {
 		handlers.onUpdateContent(recentContent);
 	};
 
-	const handleRemoveContent = async (
-		payload: EditorRemoveContentAction["payload"],
-	) => {
+	const handleRemoveContent = async (payload: EditorRemoveContentAction["payload"]) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,
 			contents: [{ ...payload, actionKind: "delete" }],
@@ -55,22 +59,27 @@ export const Editor = (props: Props) => {
 		handlers.onRemoveContent(payload);
 	};
 
+	const handleSaveContents = async (payload: EditorSaveContentsAction["payload"]) => {
+		const dbStatus = await api.saveTranscriptContents({
+			id: state.id,
+			contents: payload,
+		});
+		console.log("api.saveTranscriptContents(): ", dbStatus);
+		handlers.onSaveContents(payload);
+	};
+
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
-			<div className="flex items-center justify-between w-full">
-				<TitleWithInput title={props.data.title} />
-				<RecordControls onEditorModeChange={handlers.onModeChange} />
-			</div>
-			<div>
-				<RecordingTranscriptions
-					editorMode={state.mode}
-					contents={state.contents as TranscriptContent[]}
-					onAddContent={handleAddContent}
-					onUpdateContent={handleUpdateContent}
-					onRemoveContent={handleRemoveContent}
-					onEditorModeChange={handlers.onModeChange}
-				/>
-			</div>
+			<EditorHeader id={state.id} title={state.title} onTitleChange={handleUpdateTranscript} />
+			<RecordingTranscriptions
+				editorMode={state.mode}
+				contents={state.contents as TranscriptContent[]}
+				onAddContent={handleAddContent}
+				onUpdateContent={handleUpdateContent}
+				onRemoveContent={handleRemoveContent}
+				onSaveContents={handleSaveContents}
+				onEditorModeChange={handlers.onModeChange}
+			/>
 		</div>
 	);
 };

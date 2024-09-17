@@ -2,35 +2,31 @@
 
 #include <napi.h>
 
-/**
- * Adapted from example
- * https://github.com/nodejs/node-addon-api/blob/main/doc/class_property_descriptor.md
- */
-class Adapter : public Napi::ObjectWrap<Adapter>
+class STTAddon : public Napi::ObjectWrap<STTAddon>
 {
  public:
   static Napi::Object Init(Napi::Env env, Napi::Object exports);
-  Adapter(const Napi::CallbackInfo& info);
+  STTAddon(const Napi::CallbackInfo& info);
 
  private:
   RealtimeSpeechToTextWhisper* instance;
   Napi::Value Start(const Napi::CallbackInfo& info);
   Napi::Value Stop(const Napi::CallbackInfo& info);
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
-  Napi::Value GetTranscription(const Napi::CallbackInfo& info);
+  Napi::Value GetTranscribedText(const Napi::CallbackInfo& info);
   void Destroy(const Napi::CallbackInfo& info);
 };
 
-Napi::Object Adapter::Init(Napi::Env env, Napi::Object exports)
+Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
 {
   Napi::Function func = DefineClass(
       env,
       "RealtimeSpeechToTextWhisper",
-      {InstanceMethod<&Adapter::Start>("start"),
-       InstanceMethod<&Adapter::Stop>("stop"),
-       InstanceMethod<&Adapter::AddAudioData>("addAudioData"),
-       InstanceMethod<&Adapter::GetTranscription>("getTranscription"),
-       InstanceMethod<&Adapter::Destroy>("destroy")});
+      {InstanceMethod<&STTAddon::Start>("start"),
+       InstanceMethod<&STTAddon::Stop>("stop"),
+       InstanceMethod<&STTAddon::AddAudioData>("addAudioData"),
+       InstanceMethod<&STTAddon::GetTranscribedText>("getTranscribedText"),
+       InstanceMethod<&STTAddon::Destroy>("destroy")});
 
   Napi::FunctionReference* constructor = new Napi::FunctionReference();
   *constructor = Napi::Persistent(func);
@@ -40,8 +36,8 @@ Napi::Object Adapter::Init(Napi::Env env, Napi::Object exports)
   return exports;
 }
 
-Adapter::Adapter(const Napi::CallbackInfo& info)
-    : Napi::ObjectWrap<Adapter>(info)
+STTAddon::STTAddon(const Napi::CallbackInfo& info)
+    : Napi::ObjectWrap<STTAddon>(info)
 {
   if (info.Length() < 1 || !info[0].IsString()) {
     Napi::Error::New(info.Env(), "Expected a string specifying path to model")
@@ -53,11 +49,8 @@ Adapter::Adapter(const Napi::CallbackInfo& info)
   instance = new RealtimeSpeechToTextWhisper(path_model);
 }
 
-/** Return 0 if succeed, 1 if failed. */
-Napi::Value Adapter::AddAudioData(const Napi::CallbackInfo& info)
+Napi::Value STTAddon::AddAudioData(const Napi::CallbackInfo& info)
 {
-  // Example of typed array
-  // https://github.com/nodejs/node-addon-examples/blob/main/typed_array_to_native/node-addon-api/typed_array_to_native.cc
   if (info.Length() < 1 || !info[0].IsTypedArray()) {
     Napi::Error::New(info.Env(), "Expected a TypedArray")
         .ThrowAsJavaScriptException();
@@ -83,10 +76,10 @@ Napi::Value Adapter::AddAudioData(const Napi::CallbackInfo& info)
   return Napi::Number::New(info.Env(), 0);
 }
 
-Napi::Value Adapter::GetTranscription(const Napi::CallbackInfo& info)
+Napi::Value STTAddon::GetTranscribedText(const Napi::CallbackInfo& info)
 {
   std::vector<transcribed_segment> segments;
-  segments = instance->GetTranscription();
+  segments = instance->GetTranscribedText();
   
   Napi::Env env = info.Env();
   Napi::Array js_segments= Napi::Array::New(env, segments.size());
@@ -105,7 +98,7 @@ Napi::Value Adapter::GetTranscription(const Napi::CallbackInfo& info)
   return js_payload;
 }
 
-Napi::Value Adapter::Start(const Napi::CallbackInfo& info) 
+Napi::Value STTAddon::Start(const Napi::CallbackInfo& info) 
 {
   try
   {
@@ -119,7 +112,7 @@ Napi::Value Adapter::Start(const Napi::CallbackInfo& info)
   return Napi::Number::New(info.Env(), 1);
 }
 
-Napi::Value Adapter::Stop(const Napi::CallbackInfo& info) 
+Napi::Value STTAddon::Stop(const Napi::CallbackInfo& info) 
 {
   try
   {
@@ -133,21 +126,15 @@ Napi::Value Adapter::Stop(const Napi::CallbackInfo& info)
   return Napi::Number::New(info.Env(), 1);
 }
 
-/**
- * JS GC can't work with C++ destructor, so here's a method that can be
- * called manually to stop stt and free resources.
- */
-void Adapter::Destroy(const Napi::CallbackInfo& info)
+void STTAddon::Destroy(const Napi::CallbackInfo& info)
 {
   instance->~RealtimeSpeechToTextWhisper();
 }
 
-// Initialize native add-on
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
-  Adapter::Init(env, exports);
+  STTAddon::Init(env, exports);
   return exports;
 }
 
-// Register and initialize native add-on
 NODE_API_MODULE(NODE_GYP_MODULE_NAME, Init)

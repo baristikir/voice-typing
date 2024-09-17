@@ -1,10 +1,10 @@
 import { useRef, useEffect } from "react";
 import { api } from "@/utils/rendererElectronAPI";
 import {
-	copyTextContentsToClipboard,
 	createHeadline1,
-	createLineBreak,
-	createParagraphText,
+	createNewParagraph,
+	createParagraph,
+	createSpanText,
 	getCurrentCursorState,
 	highlightNode,
 	removeHighlightFromNode,
@@ -15,20 +15,20 @@ import {
 	EditorAddContentAction,
 	EditorMode,
 	EditorRemoveContentAction,
+	EditorSaveContentsAction,
 	EditorState,
 	EditorUpdateContentAction,
 } from "./useEditor";
 import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
-import { StatusBar } from "./StatusBar";
 import { EditorControls } from "./EditorControls";
 import cuid from "cuid";
 
 const IS_SIMULATION_MODE = false;
-const TRANSCRIPTION_RATE_IN_MS = 500;
+const TRANSCRIPTION_RATE_IN_MS = 300;
 
-async function getLatestTranscription() {
-	const newTranscription = await api.getTranscription();
-	return newTranscription;
+async function getLatestTranscribedText() {
+	const newTranscript = await api.getTranscribedText();
+	return newTranscript;
 }
 
 export type RecorderProcessorMessageData = {
@@ -52,6 +52,7 @@ interface Props {
 	onAddContent(payload: EditorAddContentAction["payload"]): void;
 	onUpdateContent(payload: EditorUpdateContentAction["payload"]): void;
 	onRemoveContent(payload: EditorRemoveContentAction["payload"]): void;
+	onSaveContents(payload: EditorSaveContentsAction["payload"]): void;
 	onEditorModeChange(payload: EditorMode): void;
 }
 export const RecordingTranscriptions = (props: Props) => {
@@ -77,7 +78,7 @@ export const RecordingTranscriptions = (props: Props) => {
 				return;
 			}
 
-			let newTranscriptions = await getLatestTranscription();
+			let newTranscriptions = await getLatestTranscribedText();
 			if (!newTranscriptions) return;
 			insertTranscripts(newTranscriptions);
 		}, TRANSCRIPTION_RATE_IN_MS);
@@ -119,25 +120,10 @@ export const RecordingTranscriptions = (props: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		textContainer.addEventListener("programmaticTextChange", handleProgrammaticTextChange);
-		const observer = new MutationObserver((mutations) => {
-			handleContentMutations(mutations);
-		});
-
-		observer.observe(textContainer, {
-			attributes: true,
-			childList: true,
-			characterData: true,
-			subtree: true,
-			attributeOldValue: true,
-		});
-
 		textContainer.addEventListener("keydown", handleKeyDown);
 
 		return () => {
-			observer.disconnect();
 			textContainer.removeEventListener("keydown", handleKeyDown);
-			textContainer.removeEventListener("programmaticTextChange", handleProgrammaticTextChange);
 		};
 	}, []);
 
@@ -151,9 +137,14 @@ export const RecordingTranscriptions = (props: Props) => {
 	const insertLineBreak = () => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
+		console.log(window.getSelection());
+		if (window.getSelection()) {
+			insertLineBreakAfterSelection();
+			return;
+		}
 
-		const br = createLineBreak({ id: cuid() });
-		textContainer.appendChild(br);
+		const newParagraph = createParagraph();
+		textContainer.appendChild(newParagraph);
 	};
 
 	const insertLineBreakAfterSelection = () => {
@@ -162,81 +153,111 @@ export const RecordingTranscriptions = (props: Props) => {
 		if (!textContainer || !selection) return;
 
 		const range = selection.getRangeAt(0);
-		const br = createLineBreak({ id: cuid() });
+		const newParagraph = createParagraph();
 
-		let currentNode = range.startContainer;
-		let offset = range.startOffset;
+		const findNearestSpan = (node: Node): HTMLSpanElement | null => {
+			while (node && node !== textContainer) {
+				if (node.nodeName === "SPAN") {
+					return node as HTMLSpanElement;
+				}
 
-		while (currentNode && currentNode.nodeName !== "P") {
-			currentNode = currentNode.parentNode;
-		}
-
-		if (!currentNode) return;
-
-		const paragraph = currentNode as HTMLParagraphElement;
-
-		if (offset === paragraph.textContent.length) {
-			// Case 1: Cursor is at the end of the paragraph
-			const newParagraph = createParagraphText("\u200B", {
-				id: cuid(),
-				partial: "false",
-			});
-
-			textContainer.insertBefore(br, paragraph.nextSibling);
-			textContainer.insertBefore(newParagraph, br.nextSibling);
-
-			range.setStart(newParagraph.firstChild, 0);
-			range.setEnd(newParagraph.firstChild, 0);
-			selection.removeAllRanges();
-			selection.addRange(range);
-
-			newParagraph.focus();
-		} else {
-			// Case 2: Cursor is somewhere in the middle of the paragraph
-			const secondHalf = paragraph.textContent.slice(offset);
-			paragraph.textContent = paragraph.textContent.slice(0, offset);
-
-			const newParagraph = createParagraphText(secondHalf, {
-				id: cuid(),
-				partial: "false",
-			});
-
-			textContainer.insertBefore(br, paragraph.nextSibling);
-			textContainer.insertBefore(newParagraph, br.nextSibling);
-
-			if (newParagraph.firstChild) {
-				range.setStart(newParagraph.firstChild, 0);
-				range.setEnd(newParagraph.firstChild, 0);
-				selection.removeAllRanges();
-				selection.addRange(range);
+				node = node.parentNode;
 			}
+			return null;
+		};
+
+		const findCurrentSpan = (node: Node) => {
+			while (node && node !== textContainer) {
+				if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).nodeName === "P") {
+					return node as HTMLParagraphElement;
+				}
+				node = node.parentNode;
+			}
+			return null;
+		};
+
+		const nearestSpan = findNearestSpan(range.startContainer);
+		const currentParagraph = findCurrentSpan(range.startContainer);
+		if (!currentParagraph) {
+			console.log("No closest paragraph was found.");
+			return;
 		}
+
+		let currentSpan =
+			range.startContainer.nodeType === Node.TEXT_NODE
+				? range.startContainer.parentElement
+				: (range.startContainer as HTMLElement);
+		if (currentSpan.nodeName !== "SPAN") {
+			console.log("Selection not in a span element.");
+			return;
+		}
+		console.log("c_span: ", currentSpan);
+
+		// Split the current span's text
+		const spanText = currentSpan.textContent;
+		const splitIndex = range.startOffset;
+		const firstHalf = spanText.slice(0, splitIndex);
+		const secondHalf = spanText.slice(splitIndex);
+
+		// Update the current span with the first half of the text
+		currentSpan.textContent = firstHalf;
+		const isAtEndOfSpan = range.startOffset === currentSpan.textContent.length;
+
+		console.log("text contents: ", { firstHalf, secondHalf, isAtEndOfSpan });
+		// const newParagraph = createParagraph();
+		const newSpanTextContent = isAtEndOfSpan ? "\u200B" : secondHalf;
+		const newSpan = createSpanText(newSpanTextContent, { id: cuid(), partial: "false" });
+		newParagraph.appendChild(newSpan);
+
+		let nextSpan = currentSpan.nextElementSibling;
+		while (nextSpan) {
+			const spanToMove = nextSpan;
+			nextSpan = nextSpan.nextElementSibling;
+			newParagraph.appendChild(spanToMove);
+		}
+
+		currentParagraph.after(br, newParagraph);
+
+		const newRange = document.createRange();
+		if (isAtEndOfSpan) {
+			// Set cursor position to empty new created span element
+			newRange.setStart(newSpan.firstChild, 1);
+			newRange.setEnd(newSpan.firstChild, 1);
+		} else {
+			newRange.setStart(newSpan.firstChild, 0);
+			newRange.setEnd(newSpan.firstChild, 0);
+		}
+		// Set the cursor position after the <br>
+		selection.removeAllRanges();
+		selection.addRange(newRange);
 	};
 
 	const insertHeadline = (textContent: string) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		const br1 = createLineBreak({ id: cuid() });
-		const br2 = createLineBreak({ id: cuid() });
 		const h1 = createHeadline1(textContent, { id: cuid() });
-
-		textContainer.appendChild(br1);
 		textContainer.appendChild(h1);
-		textContainer.appendChild(br2);
 	};
 
 	const initContents = (contents: TranscriptContent[]) => {
 		const textContainer = textContainerRef.current;
 
 		for (const content of contents) {
-			if (content.type === TranscriptContentType.Paragraph) {
-				const paragraph = createParagraphText(content.content, {
+			if (content.type === TranscriptContentType.Text) {
+				const span = createSpanText(content.content, {
 					partial: String(false),
 					id: String(content.id),
 					order: String(content.order),
 				});
-				textContainer.appendChild(paragraph);
+
+				if (textContainer.lastChild && textContainer.lastChild.nodeName === "P") {
+					textContainer.lastChild.appendChild(span);
+					continue;
+				}
+				const newParagraph = createParagraph();
+				newParagraph.appendChild(span);
+				textContainer.appendChild(newParagraph);
 			}
 			if (content.type === TranscriptContentType.Headline1) {
 				const headline = createHeadline1(content.content, {
@@ -246,40 +267,125 @@ export const RecordingTranscriptions = (props: Props) => {
 				textContainer.appendChild(headline);
 			}
 			if (content.type === TranscriptContentType.Linebreak) {
-				const linebreak = createLineBreak({
-					id: String(content.id),
-					order: String(content.order),
-				});
-				textContainer.appendChild(linebreak);
+				// We are using the margin of a paragraph to render line breaks,
+				// this will help making editor changes easier,
+				// since HTMLBrElement's will not be recognised in a Selection Range.
+				const newParagraph = createParagraph();
+				textContainer.appendChild(newParagraph);
 			}
 		}
 	};
 
 	const insertTranscripts = (
-		newTranscriptions: Awaited<ReturnType<typeof api.getTranscription>>,
+		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
 	) => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+
+		const selection = window.getSelection();
+		if (!selection) {
+			// appendChild
+			appendTranscripts(newTranscriptions);
+			return;
+		}
+
+		const range = selection.getRangeAt(0);
+		let currentNode = range.startContainer;
+		let currentOffset = range.startOffset;
+
 		for (let i = 0; i < newTranscriptions.segments.length; i++) {
-			const textContainer = textContainerRef.current;
-			if (!textContainer) return;
-
 			const segment = newTranscriptions.segments[i];
-			const lastText = textContainer.lastChild as HTMLParagraphElement;
 
-			if (!lastText || lastText.dataset.partial === "false") {
-				const paragraph = createParagraphText(segment.text, {
+			let currentParagraph =
+				currentNode.nodeType === Node.TEXT_NODE
+					? currentNode.parentElement.closest("p")
+					: (currentNode as Element).closest("p");
+
+			if (!currentParagraph) {
+				currentParagraph = createParagraph();
+				if (textContainer.lastChild) {
+					textContainer.insertBefore(currentParagraph, textContainer.lastChild.nextSibling);
+				} else {
+					textContainer.appendChild(currentParagraph);
+				}
+				currentNode = currentParagraph.firstChild;
+				currentOffset = 0;
+			}
+
+			let currentSpan: HTMLSpanElement;
+			if (
+				currentNode.nodeType === Node.TEXT_NODE &&
+				currentNode.parentElement.nodeName === "SPAN"
+			) {
+				console.log("is inside TextNode");
+				currentSpan = currentNode.parentElement as HTMLSpanElement;
+			} else {
+				console.log("no TextNode found, creating span element.");
+				currentSpan = createSpanText("", {
 					id: cuid(),
 					partial: String(segment.isPartial),
 				});
+				if (currentNode === currentParagraph) {
+					console.log("appending to paragraph");
+					currentParagraph.appendChild(currentSpan);
+				} else {
+					console.log("");
+					currentParagraph.insertBefore(currentSpan, currentNode.nextSibling);
+				}
+				currentNode = currentSpan.firstChild;
+				currentOffset = 0;
+			}
 
+			const oldText = currentSpan.textContent;
+			const newText = oldText.slice(0, currentOffset) + segment.text + oldText.slice(currentOffset);
+			currentSpan.textContent = newText;
+
+			currentSpan.dataset.partial = String(segment.isPartial);
+
+			currentOffset += segment.text.length;
+
+			if (!segment.isPartial) {
+				currentNode = currentSpan.nextSibling || currentParagraph.nextSibling || textContainer;
+				currentOffset = 0;
+			}
+
+			range.setStart(currentNode, currentOffset);
+			range.setEnd(currentNode, currentOffset);
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+	};
+
+	const appendTranscripts = (
+		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
+	) => {
+		const textContainer = textContainerRef.current;
+		for (let i = 0; i < newTranscriptions.segments.length; i++) {
+			const segment = newTranscriptions.segments[i];
+
+			const lastChild = textContainer.lastChild;
+			const isParagraphElement = lastChild.nodeName === "P";
+			if (!lastChild || !isParagraphElement) {
+				const paragraph = createNewParagraph(segment);
 				textContainer.appendChild(paragraph);
-			} else {
-				lastText.textContent = segment.text;
+				return;
+			}
 
+			const hasSpanChild = lastChild.lastChild.nodeName === "SPAN";
+			const isPartial =
+				hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
+			if (hasSpanChild && isPartial) {
+				const lastText = lastChild.lastChild as HTMLSpanElement;
+				lastText.textContent = segment.text;
 				if (!segment.isPartial) {
 					lastText.dataset.partial = "false";
-					// Dispatch custom event for text update change
-					lastText.dispatchEvent(new CustomEvent("programmaticTextChange", { bubbles: true }));
 				}
+			} else {
+				const newText = createSpanText(segment.text, {
+					id: cuid(),
+					partial: String(segment.isPartial),
+				});
+				lastChild.appendChild(newText);
 			}
 		}
 	};
@@ -292,57 +398,18 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
-	const handleProgrammaticTextChange = (event: Event) => {
-		const element = event.target as HTMLElement;
-		if (isRelevantElement(element)) {
-			processUpdates([createElementUpdate(element, ElementUpdateKind.CharacterUpdate)]);
-		}
-	};
-
-	const processUpdates = (updates: EditorElementUpdate[]) => {
-		updates.forEach((update, index) => {
-			console.log(`[ processUpdates.${index} ] update:`, update);
-			switch (update.kind) {
-				case ElementUpdateKind.Insertion:
-					const treeLength = textContainerRef.current.childNodes.length;
-					props.onAddContent({
-						id: update.id === null ? cuid() : update.id,
-						content: update.content,
-						type: update.type,
-						order: treeLength,
-					});
-					break;
-				case ElementUpdateKind.CharacterUpdate:
-					props.onUpdateContent(update);
-					break;
-				case ElementUpdateKind.Deletion:
-					if (!update.id) break;
-					props.onRemoveContent({
-						id: update.id,
-						content: update.content,
-						type: update.type,
-						order: 0,
-					});
-					break;
-			}
-		});
-	};
-
-	const isNodeValidToUpdate = (node: Node, set: Set<Node>) =>
-		node.nodeType === Node.ELEMENT_NODE && !set.has(node);
-
 	const isRelevantElement = (
 		node: Node,
 	): node is HTMLParagraphElement | HTMLHeadingElement | HTMLBRElement =>
-		["P", "H1", "BR", "#text"].includes(node.nodeName);
+		["P", "SPAN", "H1", "BR", "#text"].includes(node.nodeName);
 
 	const hasEmptyParentElement = (node: Node) =>
 		node.parentElement &&
-		node.parentElement.tagName === "P" &&
+		node.parentElement.tagName === "SPAN" &&
 		node.parentElement.textContent?.trim() === "";
 
 	const isElementEmpty = (element: HTMLElement) =>
-		element.nodeName === "P" &&
+		element.nodeName === "SPAN" &&
 		(element.textContent?.trim() === "" || element.innerHTML === "<br>");
 
 	const removeEmptyElement = (element: HTMLElement) => {
@@ -353,106 +420,15 @@ export const RecordingTranscriptions = (props: Props) => {
 		return false;
 	};
 
-	const processNodeMutation = (
-		node: Node,
-		processedUpdates: Set<Node>,
-		toUpdate: Array<EditorElementUpdate>,
-		kind: ElementUpdateKind,
-	) => {
-		if (isRelevantElement(node) && isNodeValidToUpdate(node, processedUpdates)) {
-			processedUpdates.add(node);
-			const element = node as HTMLElement;
-			if (kind === ElementUpdateKind.Insertion && isElementEmpty(node)) {
-				return;
-			}
-
-			toUpdate.push(createElementUpdate(element, kind));
-			// if (kind === ElementUpdateKind.Insertion && !isElementEmpty(node)) {
-			// } else if (kind !== ElementUpdateKind.Insertion) {
-			// 	toUpdate.push(createElementUpdate(element, kind));
-			// }
-		}
-	};
-
-	const processCharacterDataMutation = (
-		node: Node,
-		processedUpdates: Set<Node>,
-		toUpdate: Array<EditorElementUpdate>,
-	) => {
-		const parentElement = node.parentElement;
-		if (!parentElement) {
-			return;
-		}
-
-		if (isRelevantElement(parentElement) && !processedUpdates.has(parentElement)) {
-			processedUpdates.add(parentElement);
-
-			if (isElementEmpty(parentElement)) {
-				removeEmptyElement(parentElement);
-				toUpdate.push(createElementUpdate(parentElement, ElementUpdateKind.Deletion));
-			} else {
-				toUpdate.push(createElementUpdate(parentElement, ElementUpdateKind.CharacterUpdate));
-			}
-		}
-	};
-
-	const handleContentMutations = (mutations: MutationRecord[]) => {
-		const updates: EditorElementUpdate[] = [];
-		const processedElements = new Set<Node>();
-
-		mutations.forEach((mutation) => {
-			if (mutation.type === "childList") {
-				// tracking added html nodes - new paragraphs, new headlines, new text segments
-				mutation.addedNodes.forEach((node) => {
-					if (isRelevantElement(node) && hasEmptyParentElement(node as HTMLElement)) {
-						node.parentElement.removeChild(node);
-						return;
-					}
-
-					processNodeMutation(node, processedElements, updates, ElementUpdateKind.Insertion);
-				});
-
-				// tracking removed html nodes - on manual edit
-				mutation.removedNodes.forEach((node) =>
-					processNodeMutation(node, processedElements, updates, ElementUpdateKind.Deletion),
-				);
-			} else if (mutation.type === "characterData") {
-				// tracking character/text changes inside content editable paragraphs
-				processCharacterDataMutation(mutation.target, processedElements, updates);
-			}
-		});
-
-		// Check for and remove any empty paragraphs
-		// if (textContainerRef.current) {
-		// 	const emptyParagraphs = Array.from(textContainerRef.current.querySelectorAll("p")).filter(
-		// 		(p) => isElementEmpty(p) && !processedElements.has(p),
-		// 	);
-
-		// 	emptyParagraphs.forEach((p) => {
-		// 		if (removeEmptyElement(p)) {
-		// 			console.log("removing empty paragraph.", p);
-		// 			updates.push(createElementUpdate(p, ElementUpdateKind.Deletion));
-		// 		}
-		// 	});
-		// }
-
-		if (updates.length > 0) {
-			processUpdates(updates);
-		}
-	};
-
-	const createElementUpdate = (
-		element: HTMLElement,
-		kind: ElementUpdateKind,
-	): EditorElementUpdate => {
+	const createTranscriptContentShape = (element: HTMLElement, order: number): TranscriptContent => {
 		const { dataset } = element;
 		const elementType = element.nodeName.toLowerCase();
 
 		let textContent = element.textContent;
 		let contentType: TranscriptContentType;
 		switch (elementType) {
-			case "p":
-				contentType = TranscriptContentType.Paragraph;
+			case "span":
+				contentType = TranscriptContentType.Text;
 				break;
 			case "h1":
 				contentType = TranscriptContentType.Headline1;
@@ -467,7 +443,7 @@ export const RecordingTranscriptions = (props: Props) => {
 			id: dataset.id || null,
 			content: textContent || "",
 			type: contentType,
-			kind: kind,
+			order: order,
 		};
 	};
 
@@ -509,11 +485,70 @@ export const RecordingTranscriptions = (props: Props) => {
 		props.onEditorModeChange(EditorMode.DICTATING);
 	};
 
+	const handleSaveContents = async () => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+
+		const contents = convertNodesToTranscriptContents(textContainer.childNodes);
+		props.onSaveContents(contents);
+	};
+
+	const convertNodesToTranscriptContents = (nodes: NodeListOf<ChildNode>) => {
+		const contents: TranscriptContent[] = [];
+		let n_iter = 0;
+
+		for (const child of nodes) {
+			const elementType = child.nodeName.toLowerCase();
+			const isParagraphElement = elementType === "p";
+			const isHeadlineElement = elementType === "h1";
+			const hasChildNodes = child.hasChildNodes();
+
+			if (isParagraphElement && hasChildNodes) {
+				const textElements = child.childNodes;
+				if (child.parentElement.nodeName !== "DIV") {
+					contents.push({
+						id: cuid(),
+						content: "",
+						type: TranscriptContentType.Linebreak,
+						order: n_iter,
+					});
+					n_iter++;
+				}
+
+				textElements.forEach((element, idx) => {
+					if (
+						!element.textContent ||
+						element.textContent.length === 0 ||
+						element.textContent.trim().length === 0 ||
+						element.textContent === "\u200B"
+					) {
+						element.parentElement.removeChild(element);
+						return;
+					}
+					contents.push(createTranscriptContentShape(element as HTMLElement, n_iter));
+					n_iter++;
+				});
+			} else if (isHeadlineElement) {
+				contents.push(createTranscriptContentShape(child as HTMLElement, n_iter));
+				n_iter++;
+			}
+		}
+
+		return contents;
+	};
+
 	return (
-		<div>
-			<StatusBar editorMode={props.editorMode} />
-			<EditorControls onSearchQuery={handleSearch} onReplaceResults={handleReplace} />
-			<div className="flex flex-col gap-2">
+		<div className="min-h-screen rounded-xl p-2">
+			<EditorControls
+				currentMode={props.editorMode}
+				onEditorModeChange={props.onEditorModeChange}
+				onSaveContents={handleSaveContents}
+				onSearchQuery={handleSearch}
+				onReplaceResults={handleReplace}
+				handleInsertLineBreak={insertLineBreak}
+			/>
+			<div className="flex flex-col gap-2 bg-white h-full p-2 border border-gray-200 min-h-[50vh] rounded-b-2xl">
+				{/*
 				<TestSimulationControls
 					editorMode={props.editorMode}
 					pauseSimulation={pauseDictation}
@@ -523,8 +558,10 @@ export const RecordingTranscriptions = (props: Props) => {
 					insertParagraph={insertLineBreak}
 					insertHeadline={insertHeadline}
 				/>
+*/}
 				<div
-					contentEditable={props.editorMode !== EditorMode.DICTATING}
+					// contentEditable={props.editorMode !== EditorMode.DICTATING}
+					contentEditable={true}
 					ref={textContainerRef}
 					className="focus:outline-none"
 				></div>

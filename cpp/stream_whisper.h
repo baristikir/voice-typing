@@ -20,7 +20,7 @@ class RealtimeSpeechToTextWhisper
   void Start(RealtimeSpeechToTextWhisper* self);
   void Stop(RealtimeSpeechToTextWhisper* self);
   void AddAudioData(const std::vector<float>& new_data);
-  std::vector<transcribed_segment> GetTranscription();
+  std::vector<transcribed_segment> GetTranscribedText();
 
  private:
   struct whisper_context* ctx;

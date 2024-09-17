@@ -32,6 +32,10 @@ export type EditorUpdateContentAction = {
   type: "UPDATE_CONTENT";
   payload: Omit<TranscriptContent, "order">;
 };
+export type EditorSaveContentsAction = {
+  type: "SAVE_CONTENTS";
+  payload: TranscriptContent[];
+};
 // Editor State Changes
 export type EditorChangeEditorModeAction = {
   type: "CHANGE_EDITOR_MODE";
@@ -42,6 +46,7 @@ export type EditorAction =
   | EditorAddContentAction
   | EditorRemoveContentAction
   | EditorUpdateContentAction
+  | EditorSaveContentsAction
   | EditorChangeEditorModeAction;
 
 function editorReducer(state: EditorState, action: EditorAction) {
@@ -64,6 +69,8 @@ function editorReducer(state: EditorState, action: EditorAction) {
           content.id === action.payload.id ? action.payload : content
         ),
       };
+    case "SAVE_CONTENTS":
+      return { ...state };
     case "CHANGE_EDITOR_MODE":
       return {
         ...state,
@@ -112,6 +119,13 @@ export function useEditor(data: QueryTranscriptByIdData) {
     });
   };
 
+  const onSaveContents = (payload: TranscriptContent[]) => {
+    dispatch({
+      type: "SAVE_CONTENTS",
+      payload,
+    });
+  };
+
   const onModeChange = (payload: EditorMode) => {
     dispatch({
       type: "CHANGE_EDITOR_MODE",
@@ -126,6 +140,7 @@ export function useEditor(data: QueryTranscriptByIdData) {
     onAddContent,
     onUpdateContent,
     onRemoveContent,
+    onSaveContents,
     // Editor Handlers
     onModeChange,
   };

@@ -1,33 +1,47 @@
+import cuid from "cuid";
+
 type Dataset = Record<string, string>;
 function createDatasetFields(element: HTMLElement, dataset: Dataset) {
 	Object.entries(dataset).forEach((data) => {
 		element.dataset[String(data[0])] = data[1];
 	});
 }
-function createParagraphText(textContent: string, dataset: Record<string, string>) {
+function createParagraph() {
 	const paragraph = document.createElement("p");
-	const textNode = document.createTextNode(textContent);
-	paragraph.appendChild(textNode);
-
 	paragraph.id = `segment-${new Date().getTime()}`;
-	paragraph.className =
+	paragraph.className = "my-4";
+	return paragraph;
+}
+function createSpanText(textContent: string, dataset: Dataset) {
+	const span = document.createElement("span");
+	const textNode = document.createTextNode(textContent);
+	span.appendChild(textNode);
+	span.className =
 		"text-justify text-xl text-gray-950 data-[partial=true]:text-gray-400 data-[partial=true]:font-light";
-	createDatasetFields(paragraph, dataset);
+	createDatasetFields(span, dataset);
+	return span;
+}
+
+type TranscribedSegmentPayload = {
+	text: string;
+	isPartial: boolean;
+};
+function createNewParagraph(segment: TranscribedSegmentPayload) {
+	const paragraph = createParagraph();
+	const textSpan = createSpanText(segment.text, {
+		id: cuid(),
+		partial: String(segment.isPartial),
+	});
+	paragraph.appendChild(textSpan);
 	return paragraph;
 }
 
 function createHeadline1(textContent: string, dataset: Dataset) {
 	const h1 = document.createElement("h1");
 	h1.textContent = textContent;
-	h1.className = "text-3xl font-semibold text-gray-950 mt-4";
+	h1.className = "text-3xl font-semibold text-gray-950 mt-4 mb-2";
 	createDatasetFields(h1, dataset);
 	return h1;
-}
-
-function createLineBreak(dataset: Dataset) {
-	const br = document.createElement("br");
-	createDatasetFields(br, dataset);
-	return br;
 }
 
 function getCurrentCursorState() {
@@ -188,9 +202,10 @@ function replaceInNode(node: Node, regex: RegExp, replaceText: string, replaceAl
 }
 
 export {
-	createParagraphText,
+	createParagraph,
+	createSpanText,
+	createNewParagraph,
 	createHeadline1,
-	createLineBreak,
 	getCurrentCursorState,
 	copyTextContentsToClipboard,
 	highlightNode,

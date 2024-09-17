@@ -12,3 +12,6 @@ export type UpdateTranscriptsData = Awaited<
 export type CreateTranscriptsData = Awaited<
   ReturnType<typeof api.createTranscript>
 >;
+export type SaveTranscriptContentsData = Awaited<
+  ReturnType<typeof api.saveTranscriptContents>
+>;

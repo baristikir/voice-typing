@@ -32,7 +32,7 @@ function initDatabase() {
         id TEXT PRIMARY KEY,
         transcript_id INTEGER,
         content TEXT,
-        content_type TEXT CHECK(content_type IN ('p', 'h1', 'br')),
+        content_type TEXT CHECK(content_type IN ('text', 'headline', 'linebreak')),
         order_num INTEGER,
         FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
       )
@@ -85,6 +85,10 @@ interface ITranscriptsDbService {
     contents?: UpdateTranscriptContent[],
   ): Transcript;
   deleteTranscript(id: number): boolean;
+  saveTranscriptContents(
+    transcriptId: number,
+    contents: TranscriptContent[],
+  ): boolean;
 }
 
 export const TranscriptsDbService: ITranscriptsDbService = {
@@ -188,6 +192,41 @@ export const TranscriptsDbService: ITranscriptsDbService = {
     const stmt = db.prepare("DELETE FROM transcripts WHERE id = ?");
     const status = stmt.run(id);
     return status.changes === 1;
+  },
+  saveTranscriptContents(transcriptId, contents) {
+    const clearContentsStmt = db.prepare(`
+          DELETE FROM transcript_contents WHERE transcript_id = ?
+        `);
+
+    const insertContentStmt = db.prepare(`
+          INSERT INTO transcript_contents (transcript_id, id, content, content_type, order_num)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+
+    const saveContents = db.transaction(() => {
+      clearContentsStmt.run(transcriptId);
+
+      contents.forEach((content, index) => {
+        insertContentStmt.run(
+          transcriptId,
+          content.id,
+          content.content,
+          content.type,
+          content.order,
+        );
+      });
+    });
+
+    try {
+      saveContents();
+      return true;
+    } catch (error) {
+      console.error(
+        "[ TranscriptDbService ]: Error saving transcript contents: ",
+        error,
+      );
+      return false;
+    }
   },
 };
 

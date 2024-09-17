@@ -8,6 +8,7 @@ export const DB_IPC_CHANNELS = {
   TRANSCRIPT_CREATE: "db:transcript_create",
   TRANSCRIPT_UPDATE: "db:transcript_update",
   TRANSCRIPT_DELETE: "db:transcript_delete",
+  TRANSCRIPT_SAVE_CONTENTS: "db:transcript_save_contents",
 } as const;
 
 export function registerDbIPCHandler() {
@@ -72,4 +73,23 @@ export function registerDbIPCHandler() {
 
     return transcript;
   });
+
+  ipcMain.handle(
+    DB_IPC_CHANNELS["TRANSCRIPT_SAVE_CONTENTS"],
+    (_event, data) => {
+      console.log(
+        "[ dbIPC ] Saving transcript contents to database.",
+        data,
+      );
+
+      assert.strictEqual(typeof data.id === "number", true);
+
+      const status = TranscriptsDbService.saveTranscriptContents(
+        data.id,
+        data.contents,
+      );
+
+      return status;
+    },
+  );
 }

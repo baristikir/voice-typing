@@ -2,11 +2,12 @@ import { assert } from "../components/utils/assert";
 import { ipcMain } from "electron";
 import { WHISPER_IPC_CHANNELS } from "./IPC";
 
+// Depends on addon.cc definition from STTAddon::Init
 type STTWhisperStreamingModule = {
   start: () => void;
   stop: () => void;
   addAudioData: (data: Float32Array) => void;
-  getTranscription: () => string;
+  getTranscribedText: () => string;
 };
 export function registerWhisperIPCHandler(
   sttWhisperStreamingModule: STTWhisperStreamingModule,
@@ -31,9 +32,9 @@ export function registerWhisperIPCHandler(
     }
   });
   ipcMain.handle(
-    WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIPTION"],
+    WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIBED_TEXT"],
     (_event, _data) => {
-      return sttWhisperStreamingModule.getTranscription();
+      return sttWhisperStreamingModule.getTranscribedText();
     },
   );
 }

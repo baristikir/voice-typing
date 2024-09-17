@@ -23,7 +23,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 800,
-    titleBarStyle: "hiddenInset",
+    titleBarStyle: "default",
     titleBarOverlay: true,
     movable: true,
     webPreferences: {
@@ -44,7 +44,7 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  const whisperModelPath = getWhisperModelPath("base");
+  const whisperModelPath = getWhisperModelPath("base.en");
   const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
     whisperModelPath,
   );

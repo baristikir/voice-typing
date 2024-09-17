@@ -9,7 +9,7 @@ import {
 import cuid from "cuid";
 import { Button } from "../ui/Button";
 import { EditorMode } from "./useEditor";
-import { createParagraphText, createSpanText } from "./EditorElements";
+import { createNewParagraph, createParagraph, createSpanText } from "./EditorElements";
 
 // DEVELOPMENT ONLY
 export const TestSimulationControls = ({
@@ -103,51 +103,74 @@ export const Simulation = {
 	simulateTranscription(textContainer: HTMLDivElement, currentIteration: number) {
 		const lastChild = textContainer.lastChild;
 		const isParagraphElement = lastChild?.nodeName === "P";
-		const isBrElement = lastChild?.nodeName === "BR";
-
-		if (!lastChild || isBrElement) {
+		if (!lastChild || !isParagraphElement) {
 			const segment = this.testSegments[currentIteration % 5];
-			const newParagraph = createParagraphText("", {});
-			const span = createSpanText(segment, {
-				id: cuid(),
-				partial: String(currentIteration % 5 !== 0),
+			const paragraph = createNewParagraph({
+				text: segment as string,
+				isPartial: true,
 			});
+			textContainer.appendChild(paragraph);
+			return;
+		}
 
-			newParagraph.appendChild(span);
-			textContainer.appendChild(newParagraph);
+		const hasSpanChild = lastChild.lastChild.nodeName === "SPAN";
+		const isPartial =
+			hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
+		if (hasSpanChild && isPartial) {
+			const segment = this.testSegments[currentIteration % 5];
+			const paragraph = createNewParagraph({
+				text: segment,
+				isPartial: currentIteration % 5 !== 0,
+			});
+			textContainer.appendChild(paragraph);
 			return;
 		}
 
 		if (isParagraphElement) {
 			const hasSpanChild = lastChild.lastChild?.nodeName === "SPAN";
-			const isPartial = (lastChild.lastChild as HTMLSpanElement)?.dataset?.partial === "false";
+			const isPartial = (lastChild.lastChild as HTMLSpanElement)?.dataset?.partial === "true";
 
-			if (hasSpanChild) {
+			if (hasSpanChild && isPartial) {
+				lastChild.lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
+				if (currentIteration % 5 === 0) {
+					(lastChild.lastChild as HTMLSpanElement).dataset.partial = "false";
+					lastChild.lastChild.dispatchEvent(
+						new CustomEvent("programmaticTextChange", { bubbles: true }),
+					);
+				}
+			} else if (hasSpanChild) {
+				const segment = this.testSegments[currentIteration % 5];
+				const span = createSpanText(segment, {
+					id: cuid(),
+					partial: String(currentIteration % 5 !== 0),
+				});
+				// append new span to latest paragraph
+				lastChild.appendChild(span);
 			}
 		}
 
-		if (!lastChild || isBrElement) {
-			const segment = this.testSegments[currentIteration % 5];
-			const span = createSpanText(segment, {
-				id: cuid(),
-				partial: String(currentIteration % 5 !== 0),
-			});
+		// if (!lastChild || isBrElement) {
+		// 	const segment = this.testSegments[currentIteration % 5];
+		// 	const span = createSpanText(segment, {
+		// 		id: cuid(),
+		// 		partial: String(currentIteration % 5 !== 0),
+		// 	});
 
-			if (isParagraphElement) {
-				textContainer.lastChild.appendChild(span);
-				return;
-			}
+		// 	if (isParagraphElement) {
+		// 		textContainer.lastChild.appendChild(span);
+		// 		return;
+		// 	}
 
-			textContainer.appendChild(span);
-		} else if (lastChild && isParagraphElement) {
-			lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
+		// 	textContainer.appendChild(span);
+		// } else if (lastChild && isParagraphElement) {
+		// 	lastChild.textContent += ` ${this.testSegments[currentIteration % this.testSegments.length]}`;
 
-			if (currentIteration % 5 === 0) {
-				(lastChild as HTMLParagraphElement).dataset.partial = "false";
+		// 	if (currentIteration % 5 === 0) {
+		// 		(lastChild as HTMLParagraphElement).dataset.partial = "false";
 
-				// Dispatch custom event
-				lastChild.dispatchEvent(new CustomEvent("programmaticTextChange", { bubbles: true }));
-			}
-		}
+		// 		// Dispatch custom event
+		// 		lastChild.dispatchEvent(new CustomEvent("programmaticTextChange", { bubbles: true }));
+		// 	}
+		// }
 	},
 };

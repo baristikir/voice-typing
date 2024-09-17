@@ -7,7 +7,7 @@ export default function App() {
 	// useThemeListener();
 
 	return (
-		<MemoryRouter initialEntries={["/"]}>
+		<MemoryRouter initialEntries={["/transcripts/1"]}>
 			<div className="w-full relative h-full flex items-start justify-start min-h-screen drag">
 				{/* <div className="flex flex-col items-start justify-start w-60 bg-gray-50 border-r border-gray-400/20 h-full fixed py-12 px-4 space-y-6">
 					<div className="inline-flex w-full no-drag">
@@ -36,10 +36,7 @@ export default function App() {
 				<div className="py-16 px-8 w-full h-full no-drag">
 					<Routes>
 						<Route index path="/" Component={HomeRoute} />
-						<Route
-							path="/transcripts/:transcript_id"
-							Component={TranscriptRoute}
-						/>
+						<Route path="/transcripts/:transcript_id" Component={TranscriptRoute} />
 					</Routes>
 				</div>
 			</div>

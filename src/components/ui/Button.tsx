@@ -11,7 +11,7 @@ export const buttonVariants = cva(
 				default: "bg-neutral-800 text-white drop-shadow-sm md:drop-shadow-lg",
 				secondary: "bg-gray-200 text-gray-700 drop-shadow-sm hover:bg-gray-300",
 				outline:
-					"bg-white border border-gray-500/20 text-black drop-shadow-sm hover:bg-gray-100",
+					"bg-white border border-gray-500/20 text-black drop-shadow-sm hover:bg-gray-100 disabled:bg-gray-50",
 				ghost: "hover:bg-gray-200/50 bg-transparent text-gray-900",
 				destructive: "bg-red-500 hover:bg-red-600 text-white drop-shadow-sm",
 			},
@@ -26,20 +26,17 @@ export const buttonVariants = cva(
 			variant: "default",
 			size: "default",
 		},
-	}
+	},
 );
 
 export interface ButtonProps
 	extends ButtonHTMLAttributes<HTMLButtonElement>,
-	VariantProps<typeof buttonVariants> {
+		VariantProps<typeof buttonVariants> {
 	isLoading?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-	(
-		{ className, variant, size, children, isLoading = false, ...props },
-		ref
-	) => {
+	({ className, variant, size, children, isLoading = false, ...props }, ref) => {
 		return (
 			<>
 				<button
@@ -48,9 +45,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 					className={cn(buttonVariants({ variant, size, className }))}
 					{...props}
 				>
-					<div className="relative z-20 flex flex-row items-center">
-						{children}
-					</div>
+					<div className="relative z-20 flex flex-row items-center">{children}</div>
 					{isLoading && (
 						<div className="ml-2 z-20">
 							<LoadingSectionspinner
@@ -62,5 +57,5 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 				</button>
 			</>
 		);
-	}
+	},
 );

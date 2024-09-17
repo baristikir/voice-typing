@@ -1,35 +1,25 @@
-import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState } from "react";
 import { RecorderProcessorMessageData } from "./RecordingTranscriptions";
 import { Button } from "../ui/Button";
 import { assert } from "../utils/assert";
 import { EditorMode } from "./useEditor";
+import { api } from "@/utils/rendererElectronAPI";
+import { Microphone, Pause } from "@phosphor-icons/react";
 
 interface Props {
 	onEditorModeChange(payload: EditorMode): void;
 }
-export const RecordControls = (props: Props) => {
+export const AudioRecordingControl = (props: Props) => {
 	const [isRecording, setIsRecording] = useState(false);
 	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	const recordAudio = async () => {
 		props.onEditorModeChange(EditorMode.DICTATING);
-		let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
 		try {
-			const audioContext = new AudioContext({
-				sampleRate: 16000,
-				//@ts-ignore
-				channelCount: 1,
-				echoCancellation: false,
-				autoGainControl: true,
-				noiseSuppression: true,
-			});
-
-			// window.electronAPI.start();
-			await audioContext.audioWorklet.addModule(
-				"worklet/whisperWorkletProcessor.js",
-			);
+			const audioContext = new AudioContext({ sampleRate: 16000 });
+			await audioContext.audioWorklet.addModule("worklet/whisperWorkletProcessor.js");
 
 			const source = new MediaStreamAudioSourceNode(audioContext, {
 				mediaStream: stream,
@@ -37,8 +27,7 @@ export const RecordControls = (props: Props) => {
 
 			const worklet = new AudioWorkletNode(audioContext, "recorder-processor", {
 				processorOptions: {
-					channelCount: 1,
-					reportSize: 3072,
+					reportSize: 3200,
 				},
 			});
 
@@ -49,11 +38,10 @@ export const RecordControls = (props: Props) => {
 				assert("sampleRate" in event.data);
 				assert("currentFrame" in event.data);
 
-				const { recordBuffer, sampleRate, currentFrame } =
-					event.data as RecorderProcessorMessageData;
+				const { recordBuffer } = event.data as RecorderProcessorMessageData;
 
 				if (recordBuffer[0].length === 0) return;
-				window.electronAPI.addAudioData(recordBuffer[0]);
+				api.addAudioData(recordBuffer[0]);
 			};
 			source.connect(worklet);
 			worklet.connect(audioContext.destination);
@@ -80,7 +68,6 @@ export const RecordControls = (props: Props) => {
 	const pauseAudio = () => {
 		console.log("[ pauseAudio ] Disconnecting audio worklet.");
 		if (audioRecordRef.current) {
-			console.log("[ pauseAudio ] Ref found.");
 			void audioRecordRef.current.stopRecording();
 			audioRecordRef.current = null;
 		}
@@ -88,20 +75,15 @@ export const RecordControls = (props: Props) => {
 		setIsRecording(false);
 	};
 
-	return (
-		<div className="flex gap-1 items-center">
-			<Link to={"/"}>
-				<Button size="sm" variant="outline">
-					Übersicht
-				</Button>
-			</Link>
-			{isRecording === false ? (
-				<Button size="sm" variant="outline" onClick={recordAudio}>
-					Record Audio
-				</Button>
-			) : (
-				<Button onClick={pauseAudio}>Pause Audio</Button>
-			)}
-		</div>
+	return isRecording === false ? (
+		<Button size="sm" variant="outline" onClick={recordAudio}>
+			<Microphone weight="regular" className="h-4 w-4 mr-1" />
+			Aufnahme Starten
+		</Button>
+	) : (
+		<Button size="sm" onClick={pauseAudio}>
+			<Pause className="h-4 w-4 mr-1" />
+			Aufnahme pausieren
+		</Button>
 	);
 };
