@@ -9,8 +9,12 @@ console.log("[ preload ] Preload script loaded.");
 contextBridge.exposeInMainWorld("electronAPI", {
   start: () => ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_START"]),
   stop: () => ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_STOP"]),
+  reconfigure: (data: any) =>
+    ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_CONFIGURE"], data),
   addAudioData: (data: any[]) =>
     ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_ADD_AUDIO"], data),
+  clearAudioData: () =>
+    ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_CLEAR_AUDIO"]),
   getTranscribedText: () =>
     ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_GET_TRANSCRIBED_TEXT"]),
   queryTranscripts: () =>

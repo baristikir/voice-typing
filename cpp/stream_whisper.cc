@@ -73,34 +73,8 @@ bool vad_simple(std::vector<float>& pcmf32, int sample_rate, int last_ms, float 
   return true;
 }
 
-struct whisper_params {
-    int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
-    int32_t step_ms    = 3000;
-    int32_t length_ms  = 10000;
-    int32_t keep_ms    = 200;
-    int32_t capture_id = -1;
-    int32_t max_tokens = 64;
-    int32_t audio_ctx  = 768;
 
-    bool translate     = false;
-    bool no_fallback   = false;
-    bool print_special = false;
-    bool no_context    = true;
-    bool single_segment = true;
-    bool no_timestamps = false;
-    bool tinydiarize   = false;
-    bool save_audio    = false; 
-    bool use_gpu       = false;
-    bool flash_attn    = false;
-    bool print_progress = false;
-    bool print_realtime = false;
-    bool print_timestamps = false;
-
-    std::string language  = "de";
-    std::string model     = "models/ggml-base.bin";
-};
-
-RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model)
+RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model, const std::string& language)
 {
   fprintf(stdout, "initializing whisper\n");
   fprintf(stdout, "path_model: %s\n", path_model.c_str());
@@ -109,14 +83,15 @@ RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path
   fprintf(stdout, "Hardware concurrency: %u\n", std::thread::hardware_concurrency());
   is_running = true;
   is_clear_audio = false;
-  worker = std::thread(&RealtimeSpeechToTextWhisper::Run, this);
+  m_language = language.c_str();
+  worker = std::thread(&RealtimeSpeechToTextWhisper::Process, this);
   t_last_iter = std::chrono::high_resolution_clock::now();
 }
 
 void RealtimeSpeechToTextWhisper::Start(RealtimeSpeechToTextWhisper* self)
 {
   self->is_running = true;
-  self->worker = std::thread(&RealtimeSpeechToTextWhisper::Run, self);
+  self->worker = std::thread(&RealtimeSpeechToTextWhisper::Process, self);
   self->t_last_iter = std::chrono::high_resolution_clock::now();
 }
 
@@ -180,24 +155,22 @@ std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::GetTranscribedText
   return transcribed;
 }
 
-void RealtimeSpeechToTextWhisper::Run()
+void RealtimeSpeechToTextWhisper::Process()
 {
   struct whisper_full_params wparams = whisper_full_default_params(whisper_sampling_strategy::WHISPER_SAMPLING_GREEDY);
-  // See here for example https://github.com/ggerganov/whisper.cpp/blob/master/examples/stream/stream.cpp#L302
   wparams.n_threads = 8;
   wparams.no_context = true;
-  wparams.single_segment = false;
+  wparams.single_segment = true;
   wparams.print_progress = false;
   wparams.print_realtime = false;
   wparams.print_special = false;
   wparams.print_timestamps = false;
   wparams.max_tokens = 64;
-  wparams.language = "en";
+  wparams.language = m_language;
+  wparams.detect_language = false;
   wparams.translate = false;
   wparams.audio_ctx = 768;
   wparams.temperature_inc = 0.0f;
-  wparams.prompt_tokens = nullptr;
-  wparams.prompt_n_tokens = 0;
 
   /* When more than this amount of audio received, run an iteration. */
   const int trigger_ms = 400;

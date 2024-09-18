@@ -15,7 +15,7 @@ struct transcribed_segment {
 class RealtimeSpeechToTextWhisper
 {
  public:
-  RealtimeSpeechToTextWhisper(const std::string& path_model);
+  RealtimeSpeechToTextWhisper(const std::string& path_model, const std::string& language);
   ~RealtimeSpeechToTextWhisper();
   void Start(RealtimeSpeechToTextWhisper* self);
   void Stop(RealtimeSpeechToTextWhisper* self);
@@ -27,11 +27,12 @@ class RealtimeSpeechToTextWhisper
   struct whisper_context* ctx;
   std::atomic<bool> is_running;
   std::atomic<bool> is_clear_audio;
+  const char* m_language;
   std::vector<float> s_queued_pcmf32;
   std::vector<transcribed_segment> s_transcribed_segments;
-  std::mutex s_mutex;  // for accessing shared variables from both main thread and worker thread
+  std::mutex s_mutex;
   std::thread worker;
-  void Run();
+  void Process();
   std::chrono::time_point<std::chrono::high_resolution_clock> t_last_iter;
 };
 

@@ -8,8 +8,10 @@ export const DB_IPC_CHANNELS = {
 } as const;
 
 export const WHISPER_IPC_CHANNELS = {
+  WHISPER_CONFIGURE: "whisper:configure",
   WHISPER_START: "whisper:start",
   WHISPER_STOP: "whisper:stop",
   WHISPER_ADD_AUDIO: "whisper:add_audio",
+  WHISPER_CLEAR_AUDIO: "whisper:clear_audio",
   WHISPER_GET_TRANSCRIBED_TEXT: "whisper:get_transcribed_text",
 } as const;

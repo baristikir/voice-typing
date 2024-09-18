@@ -1,5 +1,6 @@
 #include "stream_whisper.h"
 
+#include <cstdio>
 #include <napi.h>
 
 class STTAddon : public Napi::ObjectWrap<STTAddon>
@@ -15,6 +16,7 @@ class STTAddon : public Napi::ObjectWrap<STTAddon>
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
   Napi::Value ClearAudioData(const Napi::CallbackInfo& info);
   Napi::Value GetTranscribedText(const Napi::CallbackInfo& info);
+  Napi::Value Reconfigure(const Napi::CallbackInfo& info);  
   void Destroy(const Napi::CallbackInfo& info);
 };
 
@@ -28,7 +30,7 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
        InstanceMethod<&STTAddon::AddAudioData>("addAudioData"),
        InstanceMethod<&STTAddon::ClearAudioData>("clearAudioData"),
        InstanceMethod<&STTAddon::GetTranscribedText>("getTranscribedText"),
-       InstanceMethod<&STTAddon::Destroy>("destroy")});
+       InstanceMethod<&STTAddon::Reconfigure>("reconfigure")});
 
   Napi::FunctionReference* constructor = new Napi::FunctionReference();
   *constructor = Napi::Persistent(func);
@@ -41,14 +43,18 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
 STTAddon::STTAddon(const Napi::CallbackInfo& info)
     : Napi::ObjectWrap<STTAddon>(info)
 {
-  if (info.Length() < 1 || !info[0].IsString()) {
-    Napi::Error::New(info.Env(), "Expected a string specifying path to model")
-        .ThrowAsJavaScriptException();
+  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString()){
+    Napi::Error::New(info.Env(), "Expected a string for model path and language")
+      .ThrowAsJavaScriptException();
     throw -1;
   }
 
   Napi::String path_model = info[0].As<Napi::String>();
-  instance = new RealtimeSpeechToTextWhisper(path_model);
+  // https://github.com/nodejs/node-addon-api/blob/main/doc/string.md#new-1
+  // from above source: const char* - represents a UTF8 string.   
+  std::string m_language = info[0].As<Napi::String>().Utf8Value();
+
+  instance = new RealtimeSpeechToTextWhisper(path_model, m_language);
 }
 
 Napi::Value STTAddon::AddAudioData(const Napi::CallbackInfo& info)
@@ -142,9 +148,25 @@ Napi::Value STTAddon::ClearAudioData(const Napi::CallbackInfo& info)
   return Napi::Number::New(info.Env(), 1);
 }
 
-void STTAddon::Destroy(const Napi::CallbackInfo& info)
+Napi::Value STTAddon::Reconfigure(const Napi::CallbackInfo& info)
 {
-  instance->~RealtimeSpeechToTextWhisper();
+  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString()){
+    Napi::Error::New(info.Env(), "Expected a string for model path and language")
+      .ThrowAsJavaScriptException();
+    return Napi::Number::New(info.Env(), 0);
+  }
+
+  Napi::String path_model = info[0].As<Napi::String>();
+  // https://github.com/nodejs/node-addon-api/blob/main/doc/string.md#new-1
+  // from above source: const char* - represents a UTF8 string.   
+  std::string m_language = info[1].As<Napi::String>().Utf8Value();
+
+  if (instance) {
+    instance->~RealtimeSpeechToTextWhisper();
+  }
+
+  instance = new RealtimeSpeechToTextWhisper(path_model, m_language);
+  return Napi::Number::New(info.Env(), 1);
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports)

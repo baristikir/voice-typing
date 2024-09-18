@@ -13,7 +13,11 @@ export interface ElectronAPI {
   // Whisper Model
   start: () => Promise<void>;
   stop: () => Promise<void>;
+  reconfigure: (
+    data: { mLanguage: string },
+  ) => Promise<number>;
   addAudioData: (data: Float32Array) => Promise<void>;
+  clearAudioData: () => Promise<void>;
   getTranscribedText: () => Promise<TranscribedSegments>;
   // Db
   queryTranscripts: () => Promise<Transcript[]>;
