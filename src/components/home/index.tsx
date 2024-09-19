@@ -32,6 +32,8 @@ function useDbTranscripts() {
 interface Props {}
 export function HomeContent(_: Props) {
 	const { data } = useDbTranscripts();
+	const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+	const handleOpenSettingsDialog = () => setIsSettingsDialogOpen(true);
 
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
@@ -45,7 +47,8 @@ export function HomeContent(_: Props) {
 				</div>
 
 				<div>
-					<Button variant="default">
+					<SettingsDialog isOpen={isSettingsDialogOpen} setIsOpen={setIsSettingsDialogOpen} />
+					<Button variant="default" onClick={handleOpenSettingsDialog}>
 						<Gear weight="fill" className="w-4 h-4 mr-1" />
 						Einstellungen
 					</Button>
@@ -96,9 +99,7 @@ const CreateNewDictation = () => {
 				className="h-64 w-full col-span-1 flex flex-col items-center justify-center p-6 gap-4 border bg-gray-50 shadow-sm rounded-2xl text-gray-500 hover:bg-gray-100 transition-colors duration-100"
 			>
 				<Plus weight="bold" className="w-5 h-5" />
-				<h3 className="font-normal text-lg text-center">
-					Neue Diktieraufnahme beginnen
-				</h3>
+				<h3 className="font-normal text-lg text-center">Neue Diktieraufnahme beginnen</h3>
 			</button>
 		</>
 	);
@@ -157,10 +158,7 @@ const CreateNewTranscriptDialog = (props: {
 						Wähle zunächst einen Titel für das Transkript aus.
 					</Dialog.Description>
 					<fieldset className="mb-[15px] flex items-center gap-5">
-						<label
-							className="text-gray-900 w-[60px] text-right text-base"
-							htmlFor="title"
-						>
+						<label className="text-gray-900 w-[60px] text-right text-base" htmlFor="title">
 							Titel
 						</label>
 						<input
@@ -182,6 +180,80 @@ const CreateNewTranscriptDialog = (props: {
 								onClick={handleSubmit}
 							>
 								Erstellen
+							</button>
+						</Dialog.Close>
+					</div>
+					<Dialog.Close asChild>
+						<button
+							className="text-violet11 hover:bg-violet4 focus:shadow-violet7 absolute top-[10px] right-[10px] inline-flex h-[25px] w-[25px] appearance-none items-center justify-center rounded-full focus:shadow-[0_0_0_2px] focus:outline-none"
+							aria-label="Close"
+						>
+							<X className="w-4 h-4" />
+						</button>
+					</Dialog.Close>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+};
+
+enum WhisperModelLanguage {
+	English = "en",
+	German = "de",
+}
+const SettingsDialog = (props: { isOpen: boolean; setIsOpen: (value: boolean) => void }) => {
+	const [language, setLanguage] = useState(WhisperModelLanguage.English);
+
+	const handleSubmit = async () => {
+		if (language === WhisperModelLanguage.German) {
+			await api.reconfigure({
+				mLanguageId: 0,
+			});
+		} else if (language === WhisperModelLanguage.English) {
+			await api.reconfigure({
+				mLanguageId: 1,
+			});
+		} else {
+			return;
+		}
+	};
+
+	return (
+		<Dialog.Root open={props.isOpen} onOpenChange={props.setIsOpen}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="bg-black/30 data-[state=open]:animate-overlayShow fixed inset-0 z-[90]" />
+				<Dialog.Content className="no-drag data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[450px] translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white p-6 focus:outline-none z-[100]">
+					<Dialog.Title className="text-gray-900 m-0 text-[17px] font-medium">
+						Einstellungen
+					</Dialog.Title>
+					<div className="flex flex-col w-full h-auto">
+						<fieldset className="my-[15px] h-full w-full flex flex-col gap-1">
+							<label className="text-gray-900 text-base" htmlFor="language-select">
+								Sprache für die Spracherkennung
+							</label>
+							<select
+								className="text-gray-900 block h-8 w-full rounded px-3 text-[14px] leading-none shadow-[0_0_0_1px] outline-none focus:shadow-[0_0_0_2px]"
+								id="language-select"
+								name="language"
+								value={language}
+								onChange={(event) => {
+									event.preventDefault();
+									setLanguage(event.target.value as WhisperModelLanguage);
+								}}
+							>
+								<option value="de">Deutsch</option>
+								<option value="en">English</option>
+							</select>
+						</fieldset>
+					</div>
+					<div className="mt-[25px] flex justify-end">
+						<Dialog.Close asChild>
+							<button
+								type="button"
+								className="bg-green-300 text-green-800 hover:bg-green-500 focus:shadow-green-700 inline-flex h-10 items-center justify-center rounded-lg px-[15px] font-medium leading-none focus:shadow-[0_0_0_2px] focus:outline-none"
+								onClick={handleSubmit}
+							>
+								Speichern
 							</button>
 						</Dialog.Close>
 					</div>
