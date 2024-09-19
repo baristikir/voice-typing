@@ -8,15 +8,6 @@
 #include <thread>
 #include <vector>
 
-void print_array(const std::vector<float>& data)
-{
-  fprintf(stdout, "print array: [");
-  for (int i = 0; i < std::min((int)data.size(), 10); i++) {
-    fprintf(stdout, " %.8f,", data[i]);
-  }
-  fprintf(stdout, " ]\n");
-}
-
 /* Source from https://github.com/ggerganov/whisper.cpp/blob/22fcd5fd110ba1ff592b4e23013d870831756259/examples/common.cpp#L750C1-L750C5 */
 void high_pass_filter(std::vector<float>& data, float cutoff, float sample_rate)
 {
@@ -75,31 +66,27 @@ bool vad_simple(std::vector<float>& pcmf32, int sample_rate, int last_ms, float 
 
 
 RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model, const char* language)
+: is_running(false), is_clear_audio(false), m_language(language)
 {
-  fprintf(stdout, "initializing whisper\n");
   fprintf(stdout, "path_model: %s\n", path_model.c_str());
-  ctx = whisper_init_from_file(path_model.c_str());
-  fprintf(stdout, "whisper initialized\n");
   fprintf(stdout, "Hardware concurrency: %u\n", std::thread::hardware_concurrency());
-  is_running = true;
-  is_clear_audio = false;
-  m_language = language;
-  fprintf(stdout, "whisper_lang_id result for lang '%s': %d\n", language, whisper_lang_id(language));
-  worker = std::thread(&RealtimeSpeechToTextWhisper::Process, this);
-  t_last_iter = std::chrono::high_resolution_clock::now();
+  ctx = whisper_init_from_file(path_model.c_str());
 }
 
-void RealtimeSpeechToTextWhisper::Start(RealtimeSpeechToTextWhisper* self)
+void RealtimeSpeechToTextWhisper::Start()
 {
-  self->is_running = true;
-  self->worker = std::thread(&RealtimeSpeechToTextWhisper::Process, self);
-  self->t_last_iter = std::chrono::high_resolution_clock::now();
+  if (!is_running) {
+    worker = std::thread(&RealtimeSpeechToTextWhisper::Process, this);
+    is_running = true;
+    t_last_iter = std::chrono::high_resolution_clock::now();
+  }
 }
 
-void RealtimeSpeechToTextWhisper::Stop(RealtimeSpeechToTextWhisper* self)
+void RealtimeSpeechToTextWhisper::Stop()
 {
-  self->is_running = false;
-  self->worker.join();
+  is_running = false;
+  if (worker.joinable())
+    worker.join();
 }
 
 void RealtimeSpeechToTextWhisper::ClearAudioData()
@@ -216,9 +203,8 @@ void RealtimeSpeechToTextWhisper::Process()
   /* Processing loop */
   while (is_running) {
     {
-      std::lock_guard<std::mutex> lock(s_mutex);
-      
-      if(is_clear_audio) {
+      std::lock_guard<std::mutex> lock(s_mutex);    
+      if (is_clear_audio) {
         pcmf32.clear();
         is_clear_audio = false;
       }
@@ -226,7 +212,6 @@ void RealtimeSpeechToTextWhisper::Process()
 
     {
       std::unique_lock<std::mutex> lock(s_mutex);
-
       if (s_queued_pcmf32.size() < n_samples_trigger) {
         lock.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -236,7 +221,6 @@ void RealtimeSpeechToTextWhisper::Process()
 
     {
       std::lock_guard<std::mutex> lock(s_mutex);
-
       if (s_queued_pcmf32.size() > 2 * n_samples_iter_threshold) {
         fprintf(stderr, "\n\n%s: WARNING: too much audio is going to be processed, result may not come out in real time\n\n", __func__);
       }
@@ -244,14 +228,7 @@ void RealtimeSpeechToTextWhisper::Process()
 
     {
       std::lock_guard<std::mutex> lock(s_mutex);
-
       pcmf32.insert(pcmf32.end(), s_queued_pcmf32.begin(), s_queued_pcmf32.end());
-
-      // printf("existing: %d, new: %d, will process: %d, threshold: %d\n",
-      //        n_samples_old, n_samples_new, (int)pcmf32.size(), n_samples_iter_threshold);
-
-      // print_array(pcmf32);
-
       s_queued_pcmf32.clear();
     }
 

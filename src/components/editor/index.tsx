@@ -9,15 +9,32 @@ import {
 	useEditor,
 } from "./useEditor";
 import { TranscriptContent } from "@/shared/models";
+import { useEffect } from "react";
 
 interface Props {
 	data: QueryTranscriptByIdData;
+}
+
+function startSpeechToTextService() {
+	console.log("[ Editor ]: Starting SST Service");
+	api.start();
+}
+
+function stopSpeechToTextService() {
+	console.log("[ Editor ]: Stoping SST Service");
+	api.stop();
 }
 
 export const Editor = (props: Props) => {
 	const { state, ...handlers } = useEditor(props.data);
 	// console.log("[ Editor ] editor state: ", state);
 
+	useEffect(() => {
+		startSpeechToTextService();
+		return () => {
+			stopSpeechToTextService();
+		};
+	}, []);
 	const handleAddContent = async (payload: EditorAddContentAction["payload"]) => {
 		const transcript = await api.updateTranscript({
 			id: state.id,

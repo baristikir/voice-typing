@@ -119,7 +119,7 @@ Napi::Value STTAddon::Start(const Napi::CallbackInfo& info)
 {
   try
   {
-    instance->Start(instance);
+    instance->Start();
   }
   catch(const std::exception& e)
   {
@@ -133,7 +133,7 @@ Napi::Value STTAddon::Stop(const Napi::CallbackInfo& info)
 {
   try
   {
-    instance->Stop(instance);
+    instance->Stop();
   }
   catch(const std::exception& e)
   {
