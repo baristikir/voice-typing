@@ -1,7 +1,11 @@
 import { app } from "electron";
 import SQL from "better-sqlite3";
 import path from "path";
-import { Transcript, TranscriptContent } from "@/shared/models";
+import {
+  Transcript,
+  TranscriptContent,
+  UserPreferences,
+} from "@/shared/models";
 
 export let db: SQL.Database;
 
@@ -39,12 +43,24 @@ function initDatabase() {
     `);
 
   db.exec(`
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        speech_recognition_language_id INTEGER DEFAULT 0,
+        push_to_talk_enabled BOOLEAN DEFAULT FALSE
+      )
+    `);
+
+  db.exec(`
       CREATE TRIGGER IF NOT EXISTS update_transcripts_timestamp
       AFTER UPDATE ON transcripts
       BEGIN
         UPDATE transcripts SET updatedAt = CURRENT_TIMESTAMP
         WHERE id = NEW.id;
       END
+    `);
+
+  db.exec(`
+      INSERT OR IGNORE INTO user_preferences (id) VALUES (1)
     `);
 }
 
@@ -67,6 +83,44 @@ export function clearDatabase() {
   clear();
   initDatabase();
 }
+
+interface IUserPreferencesDbService {
+  getUserPreferences(): UserPreferences;
+  updateUserPreferences(preferences: Partial<UserPreferences>): UserPreferences;
+}
+
+export const UserPreferencesDbService: IUserPreferencesDbService = {
+  getUserPreferences() {
+    const stmt = db.prepare(`
+          SELECT speech_recognition_language_id, push_to_talk_enabled
+          FROM user_preferences
+          WHERE id = 1 
+        `);
+
+    const row = stmt.get() as any;
+    return {
+      speechRecognitionLanguageId: row.speech_recognition_language_id,
+      pushToTalkEnabled: Boolean(row.push_to_talk_enabled),
+    };
+  },
+  updateUserPreferences(preferences) {
+    const updateStmt = db.prepare(`
+          UPDATE user_preferences
+          SET speech_recognition_language_id = COALESCE(?, speech_recognition_language_id),
+              push_to_talk_enabled = COALESCE(?, push_to_talk_enabled)
+          WHERE id = 1            
+        `);
+
+    db.transaction(() => {
+      updateStmt.run(
+        preferences.speechRecognitionLanguageId,
+        preferences.pushToTalkEnabled,
+      );
+    })();
+
+    return this.getUserPreferences();
+  },
+};
 
 type UpdateTranscriptContent =
   & (TranscriptContent | Omit<TranscriptContent, "order">)

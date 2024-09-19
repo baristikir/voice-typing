@@ -1,3 +1,8 @@
+export interface UserPreferences {
+  speechRecognitionLanguageId: number;
+  pushToTalkEnabled: boolean;
+}
+
 export interface Transcript {
   id: number;
   title: string;

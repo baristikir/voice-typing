@@ -1,6 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert";
+import { UserPreferences } from "@/shared/models";
+
+export function getWhisperModelConfiguration(languageId: number) {
+  const modelName = getWhisperModelName(languageId as any);
+  return {
+    modelPath: getWhisperModelPath(modelName),
+    modelLanguage: languageId,
+  };
+}
 
 type WhisperModelName = "tiny" | "tiny.en" | "base" | "base.en";
 type WhisperModelLanguage = "en" | "de";

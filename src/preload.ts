@@ -7,6 +7,10 @@ import { TranscriptContent } from "./shared/models";
 console.log("[ preload ] Preload script loaded.");
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  getUserPreferences: () =>
+    ipcRenderer.invoke(DB_IPC_CHANNELS["PREFERENCES_GET"]),
+  updateUserPreferences: (data: any) =>
+    ipcRenderer.invoke(DB_IPC_CHANNELS["PREFERENCES_UPDATE"], data),
   start: () => ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_START"]),
   stop: () => ipcRenderer.invoke(WHISPER_IPC_CHANNELS["WHISPER_STOP"]),
   reconfigure: (data: any) =>

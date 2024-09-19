@@ -2,8 +2,15 @@ import { app, BrowserWindow } from "electron";
 import assert from "node:assert";
 import path from "node:path";
 import { registerWhisperIPCHandler } from "./ipc/whisperIPCHandlers";
-import { getWhisperModelPath } from "./utils/whisperModel";
-import { closeDatabase, setupDatabase } from "./backend/db";
+import {
+  getWhisperModelConfiguration,
+  getWhisperModelPath,
+} from "./utils/whisperModel";
+import {
+  closeDatabase,
+  setupDatabase,
+  UserPreferencesDbService,
+} from "./backend/db";
 import { registerDbIPCHandler } from "./ipc/dbIPCHandlers";
 
 // Disable security warnings in devtools
@@ -44,15 +51,19 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  const whisperModelPath = getWhisperModelPath("base");
-  const whisperDefaultLanguage = 0;
+  setupDatabase();
+
+  const userPreferences = UserPreferencesDbService.getUserPreferences();
+  const whisperConfiguration = getWhisperModelConfiguration(
+    userPreferences.speechRecognitionLanguageId,
+  );
+
   const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
-    whisperModelPath,
-    whisperDefaultLanguage,
+    whisperConfiguration.modelPath,
+    whisperConfiguration.modelLanguage,
   );
   assert.strictEqual(typeof sttWhisperStreamingModule, "object");
 
-  setupDatabase();
   registerWhisperIPCHandler(sttWhisperStreamingModule);
   registerDbIPCHandler();
 

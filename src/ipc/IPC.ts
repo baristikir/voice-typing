@@ -1,4 +1,6 @@
 export const DB_IPC_CHANNELS = {
+  PREFERENCES_GET: "db:preferences_get",
+  PREFERENCES_UPDATE: "db:preferences_update",
   TRANSCRIPT_GET_ALL: "db:transcript_getAll",
   TRANSCRIPT_GET: "db:transcript_get",
   TRANSCRIPT_CREATE: "db:transcript_create",

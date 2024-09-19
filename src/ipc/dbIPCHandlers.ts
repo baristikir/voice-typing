@@ -1,15 +1,7 @@
 import { TranscriptsDbService } from "../backend/db";
 import { assert } from "../components/utils/assert";
 import { ipcMain } from "electron";
-
-export const DB_IPC_CHANNELS = {
-  TRANSCRIPT_GET_ALL: "db:transcript_getAll",
-  TRANSCRIPT_GET: "db:transcript_get",
-  TRANSCRIPT_CREATE: "db:transcript_create",
-  TRANSCRIPT_UPDATE: "db:transcript_update",
-  TRANSCRIPT_DELETE: "db:transcript_delete",
-  TRANSCRIPT_SAVE_CONTENTS: "db:transcript_save_contents",
-} as const;
+import { DB_IPC_CHANNELS } from "./IPC";
 
 export function registerDbIPCHandler() {
   ipcMain.handle(DB_IPC_CHANNELS["TRANSCRIPT_GET_ALL"], (_event, _data) => {

@@ -1,4 +1,8 @@
-import { Transcript, TranscriptContent } from "./shared/models";
+import {
+  Transcript,
+  TranscriptContent,
+  UserPreferences,
+} from "./shared/models";
 
 type TranscribedSegmentPayload = {
   text: string;
@@ -10,6 +14,11 @@ type TranscribedSegments = {
 };
 
 export interface ElectronAPI {
+  // User Preferences
+  getUserPreferences: () => Promise<void>;
+  updateUserPreferences: (
+    preferences: UserPreferences,
+  ) => Promise<UserPreferences>;
   // Whisper Model
   start: () => Promise<void>;
   stop: () => Promise<void>;
