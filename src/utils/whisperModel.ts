@@ -5,12 +5,12 @@ import assert from "node:assert";
 type WhisperModelName = "tiny" | "tiny.en" | "base" | "base.en";
 type WhisperModelLanguage = "en" | "de";
 export function getWhisperModelName(
-  modelLangugage: WhisperModelLanguage = "de",
+  modelLangugage: 0 | 1 = 0,
 ): WhisperModelName {
   switch (modelLangugage) {
-    case "de":
+    case 0:
       return "base";
-    case "en":
+    case 1:
       return "base.en";
   }
 }

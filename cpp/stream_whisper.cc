@@ -74,7 +74,7 @@ bool vad_simple(std::vector<float>& pcmf32, int sample_rate, int last_ms, float 
 }
 
 
-RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model, const std::string& language)
+RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model, const char* language)
 {
   fprintf(stdout, "initializing whisper\n");
   fprintf(stdout, "path_model: %s\n", path_model.c_str());
@@ -83,7 +83,8 @@ RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path
   fprintf(stdout, "Hardware concurrency: %u\n", std::thread::hardware_concurrency());
   is_running = true;
   is_clear_audio = false;
-  m_language = language.c_str();
+  m_language = language;
+  fprintf(stdout, "whisper_lang_id result for lang '%s': %d\n", language, whisper_lang_id(language));
   worker = std::thread(&RealtimeSpeechToTextWhisper::Process, this);
   t_last_iter = std::chrono::high_resolution_clock::now();
 }
@@ -166,6 +167,7 @@ void RealtimeSpeechToTextWhisper::Process()
   wparams.print_special = false;
   wparams.print_timestamps = false;
   wparams.max_tokens = 64;
+  fprintf(stdout, "m_language: %s\n", m_language);
   wparams.language = m_language;
   wparams.detect_language = false;
   wparams.translate = false;

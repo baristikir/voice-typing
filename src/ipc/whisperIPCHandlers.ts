@@ -7,7 +7,7 @@ import { getWhisperModelName, getWhisperModelPath } from "@/utils/whisperModel";
 type STTWhisperStreamingModule = {
   start: () => void;
   stop: () => void;
-  reconfigure: (mPath: string, mLanguage: string) => number;
+  reconfigure: (mPath: string, mLanguageId: number) => number;
   addAudioData: (data: Float32Array) => void;
   clearAudioData: () => void;
   getTranscribedText: () => string;
@@ -19,11 +19,11 @@ export function registerWhisperIPCHandler(
     console.log("[ whisperIPC ] New model configuration received");
 
     assert.strictEqual(typeof data === "object", true);
-    assert.strictEqual(typeof data.mLanguage === "string", true);
+    assert.strictEqual(typeof data.mLanguageId === "number", true);
 
-    const whisperModelName = getWhisperModelName(data.mLanguage);
+    const whisperModelName = getWhisperModelName(data.mLanguageId);
     const whisperModelPath = getWhisperModelPath(whisperModelName);
-    sttWhisperStreamingModule.reconfigure(whisperModelPath, data.mLanguage);
+    sttWhisperStreamingModule.reconfigure(whisperModelPath, data.mLanguageId);
   });
   ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_START"], (_event, _data) => {
     console.log("[ whisperIPC ] Starting whisper ipc handler called.");

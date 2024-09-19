@@ -44,8 +44,8 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
-  const whisperModelPath = getWhisperModelPath("base.en");
-  const whisperDefaultLanguage = "en";
+  const whisperModelPath = getWhisperModelPath("base");
+  const whisperDefaultLanguage = 0;
   const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
     whisperModelPath,
     whisperDefaultLanguage,

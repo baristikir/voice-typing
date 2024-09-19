@@ -14,7 +14,7 @@ export interface ElectronAPI {
   start: () => Promise<void>;
   stop: () => Promise<void>;
   reconfigure: (
-    data: { mLanguage: string },
+    data: { mLanguageId: number },
   ) => Promise<number>;
   addAudioData: (data: Float32Array) => Promise<void>;
   clearAudioData: () => Promise<void>;

@@ -43,18 +43,27 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
 STTAddon::STTAddon(const Napi::CallbackInfo& info)
     : Napi::ObjectWrap<STTAddon>(info)
 {
-  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString()){
-    Napi::Error::New(info.Env(), "Expected a string for model path and language")
+  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsNumber()){
+    Napi::Error::New(info.Env(), "Expected a string for model path and number for language id")
       .ThrowAsJavaScriptException();
     throw -1;
   }
 
-  Napi::String path_model = info[0].As<Napi::String>();
-  // https://github.com/nodejs/node-addon-api/blob/main/doc/string.md#new-1
-  // from above source: const char* - represents a UTF8 string.   
-  std::string m_language = info[0].As<Napi::String>().Utf8Value();
+  Napi::String m_path = info[0].As<Napi::String>();
+  int m_language_id = info[1].As<Napi::Number>();
 
-  instance = new RealtimeSpeechToTextWhisper(path_model, m_language);
+  const char* m_language;
+  switch (m_language_id) {
+    case 0:
+      m_language = "de";
+      break;
+    case 1:
+      m_language = "en";
+      break;
+    default:
+      Napi::Error::New(info.Env(), "Expected a m_language_id of 0 or 1").ThrowAsJavaScriptException();
+  }
+  instance = new RealtimeSpeechToTextWhisper(m_path, m_language);
 }
 
 Napi::Value STTAddon::AddAudioData(const Napi::CallbackInfo& info)
@@ -150,22 +159,35 @@ Napi::Value STTAddon::ClearAudioData(const Napi::CallbackInfo& info)
 
 Napi::Value STTAddon::Reconfigure(const Napi::CallbackInfo& info)
 {
-  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsString()){
-    Napi::Error::New(info.Env(), "Expected a string for model path and language")
+  if (info.Length() < 2 || !info[0].IsString() || !info[1].IsNumber()){
+    Napi::Error::New(info.Env(), "Expected a string for model path and number for language id")
       .ThrowAsJavaScriptException();
     return Napi::Number::New(info.Env(), 0);
   }
 
-  Napi::String path_model = info[0].As<Napi::String>();
+  Napi::String m_path = info[0].As<Napi::String>();
   // https://github.com/nodejs/node-addon-api/blob/main/doc/string.md#new-1
   // from above source: const char* - represents a UTF8 string.   
-  std::string m_language = info[1].As<Napi::String>().Utf8Value();
+  int m_language_id = info[1].As<Napi::Number>();
+
+  const char* m_language;
+  switch (m_language_id) {
+    case 0:
+      m_language = "de";
+      break;
+    case 1:
+      m_language = "en";
+      break;
+    default:
+      Napi::Error::New(info.Env(), "Expected a m_language_id of 0 or 1").ThrowAsJavaScriptException();
+      return Napi::Number::New(info.Env(), 0);
+  }
 
   if (instance) {
     instance->~RealtimeSpeechToTextWhisper();
   }
 
-  instance = new RealtimeSpeechToTextWhisper(path_model, m_language);
+  instance = new RealtimeSpeechToTextWhisper(m_path, m_language);
   return Napi::Number::New(info.Env(), 1);
 }
 

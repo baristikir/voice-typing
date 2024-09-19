@@ -15,7 +15,7 @@ struct transcribed_segment {
 class RealtimeSpeechToTextWhisper
 {
  public:
-  RealtimeSpeechToTextWhisper(const std::string& path_model, const std::string& language);
+  RealtimeSpeechToTextWhisper(const std::string& path_model, const char* language);
   ~RealtimeSpeechToTextWhisper();
   void Start(RealtimeSpeechToTextWhisper* self);
   void Stop(RealtimeSpeechToTextWhisper* self);
