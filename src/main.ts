@@ -17,8 +17,24 @@ import { registerPreferencesIPCHandler } from "./ipc/preferencesIPCHandlers";
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
+let addonPath;
+if (app.isPackaged) {
+  addonPath = path.join(
+    process.resourcesPath,
+    "app.asar.unpacked",
+    "native_modules",
+    "addon.node",
+  );
+} else {
+  addonPath = path.resolve(
+    process.cwd(),
+    "build",
+    "Release",
+    "addon.node",
+  );
+}
 // Import the compiled C++ addon
-const addon = require("bindings")("addon.node");
+const addon = require(addonPath);
 assert.strictEqual(typeof addon, "object");
 assert.strictEqual(typeof addon.RealtimeSpeechToTextWhisper, "function");
 

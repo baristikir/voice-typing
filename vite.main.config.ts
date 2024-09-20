@@ -21,7 +21,7 @@ export default defineConfig((env) => {
         formats: ["cjs"],
       },
       rollupOptions: {
-        external: [...external, "addon.node"],
+        external: [...external],
       },
     },
     publicDir: "public/",

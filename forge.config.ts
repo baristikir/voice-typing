@@ -7,6 +7,8 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
+import path from "path";
+import fs from "fs";
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -17,6 +19,10 @@ const config: ForgeConfig = {
       "com.apple.security.device.audio-input": true,
       NSMicrophoneUsageDescription: "This app needs access to the microphone",
     },
+    extraResource: [
+      "./whisper.cpp/models/ggml-base.bin",
+      "./whisper.cpp/models/ggml-base.en.bin",
+    ],
   },
   rebuildConfig: {},
   makers: [
@@ -60,6 +66,29 @@ const config: ForgeConfig = {
       ],
     }),
   ],
+  hooks: {
+    packageAfterCopy: async (
+      config,
+      buildPath,
+      electronVersion,
+      platform,
+      arch,
+    ) => {
+      const nativeAddonPath = path.resolve(
+        __dirname,
+        "build",
+        "Release",
+        "addon.node",
+      );
+      const destPath = path.join(buildPath, "native_modules");
+
+      await fs.promises.mkdir(destPath, { recursive: true });
+      await fs.promises.copyFile(
+        nativeAddonPath,
+        path.join(destPath, "addon.node"),
+      );
+    },
+  },
 };
 
 export default config;

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert";
-import { UserPreferences } from "@/shared/models";
+import { app } from "electron";
 
 export function getWhisperModelConfiguration(languageId: number) {
   const modelName = getWhisperModelName(languageId as any);
@@ -12,7 +12,7 @@ export function getWhisperModelConfiguration(languageId: number) {
 }
 
 type WhisperModelName = "tiny" | "tiny.en" | "base" | "base.en";
-type WhisperModelLanguage = "en" | "de";
+
 export function getWhisperModelName(
   modelLangugage: 0 | 1 = 0,
 ): WhisperModelName {
@@ -25,7 +25,21 @@ export function getWhisperModelName(
 }
 
 export function getWhisperModelPath(modelName: WhisperModelName = "base.en") {
-  const whisperCPPModelsPath = "../whisper.cpp/models";
+  let whisperCPPModelsPath: string;
+  if (app.isPackaged) {
+    whisperCPPModelsPath = path.join(
+      process.resourcesPath,
+    );
+  } else {
+    whisperCPPModelsPath = path.resolve(
+      // process.cwd instead of __dirname when using vite as build tool, also see here: https://v2.vitejs.dev/config/#root
+      // __dirname will result in .vite/build directory instead of project root directory where as process.cwd will result in project root directory
+      process.cwd(),
+      "whisper.cpp",
+      "models",
+    );
+  }
+
   const whipserModelsByName: Record<WhisperModelName, string> = {
     tiny: "ggml-tiny.bin",
     "tiny.en": "ggml-tiny.en.bin",
@@ -40,12 +54,9 @@ export function getWhisperModelPath(modelName: WhisperModelName = "base.en") {
   );
 
   const whisperModelPath = path.join(
-    // process.cwd instead of __dirname when using vite as build tool, also see here: https://v2.vitejs.dev/config/#root
-    // __dirname will result in .vite/build directory instead of project root directory where as process.cwd will result in project root directory
-    process.cwd(),
-    `${whisperCPPModelsPath}/${whipserModelsByName[modelName]}`,
+    whisperCPPModelsPath,
+    whipserModelsByName[modelName],
   );
-
   if (!fs.existsSync(whisperModelPath)) {
     console.error(
       `[ getWhisperModelPath ] Whisper model not found at ${whisperModelPath}.`,
