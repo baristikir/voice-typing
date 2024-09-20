@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import assert from "node:assert";
 import path from "node:path";
 import { registerWhisperIPCHandler } from "./ipc/whisperIPCHandlers";
@@ -13,6 +13,10 @@ import {
 } from "./backend/db";
 import { registerDbIPCHandler } from "./ipc/dbIPCHandlers";
 import { registerPreferencesIPCHandler } from "./ipc/preferencesIPCHandlers";
+import {
+  checkMicrophonePermission,
+  requestMicrophonePermission,
+} from "./utils/microphone";
 
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -63,12 +67,25 @@ const createWindow = () => {
     );
   }
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // Open the DevTools in Development.
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+  }
 };
 
 app.whenReady().then(() => {
   setupDatabase();
+  const micPermission = checkMicrophonePermission();
+  if (micPermission !== "granted") {
+    requestMicrophonePermission().then((isGranted) => {
+      if (!isGranted) {
+        dialog.showErrorBox(
+          "Zugriff verweigert",
+          "Damit diese Anwendung ordnungsgemäß funktioniert, ist der Zugriff auf das Mikrofon erforderlich.",
+        );
+      }
+    });
+  }
 
   const userPreferences = UserPreferencesDbService.getUserPreferences();
   const whisperConfiguration = getWhisperModelConfiguration(
