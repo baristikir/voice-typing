@@ -29,7 +29,7 @@ speech to text. The application is built using Electron.
 - [x] Capture audio input from microphone
 - [x] Transcribe audio segments and return to JS thread
 - [ ] Pause / Resume transcription
-  - [ ] Clear whisper state
+  - [x] Clear whisper state
 - [ ] Controls
   - [ ] Push to talk -> Configurable keyboard shortcuts
   - [ ] Toggle to talk
@@ -42,6 +42,7 @@ speech to text. The application is built using Electron.
 - [x] Create tables
 - [x] Add IPC handlers
 - Settings:
+- [x] Language Selection (German/English)
 - [ ] Configurable dictation (toggle or push-to-talk)
 - [ ] Customizable keyboard shortcuts
   - [ ] Dictationmode Shortcut (either for toggling or push-to-talk)
