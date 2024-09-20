@@ -13,12 +13,9 @@ import fs from "fs";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: {
-      unpack: "*.{node,dll}",
+      unpack: "**/native_modules/*.node",
     },
-    extendInfo: {
-      "com.apple.security.device.audio-input": true,
-      NSMicrophoneUsageDescription: "This app needs access to the microphone",
-    },
+    extendInfo: "./resources/Info.plist",
     extraResource: [
       "./whisper.cpp/models/ggml-base.bin",
       "./whisper.cpp/models/ggml-base.en.bin",
