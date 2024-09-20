@@ -12,9 +12,7 @@ import fs from "fs";
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: {
-      unpack: "**/native_modules/*.node",
-    },
+    asar: true,
     extendInfo: "./resources/Info.plist",
     extraResource: [
       "./whisper.cpp/models/ggml-base.bin",
