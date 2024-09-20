@@ -15,7 +15,7 @@ type TranscribedSegments = {
 
 export interface ElectronAPI {
   // User Preferences
-  getUserPreferences: () => Promise<void>;
+  getUserPreferences: () => Promise<UserPreferences>;
   updateUserPreferences: (
     preferences: UserPreferences,
   ) => Promise<UserPreferences>;

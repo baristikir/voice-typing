@@ -2,6 +2,7 @@ import { assert } from "../components/utils/assert";
 import { ipcMain } from "electron";
 import { WHISPER_IPC_CHANNELS } from "./IPC";
 import { getWhisperModelName, getWhisperModelPath } from "@/utils/whisperModel";
+import { UserPreferencesDbService } from "@/backend/db";
 
 // Depends on addon.cc definition from STTAddon::Init
 type STTWhisperStreamingModule = {
@@ -23,6 +24,11 @@ export function registerWhisperIPCHandler(
 
     const whisperModelName = getWhisperModelName(data.mLanguageId);
     const whisperModelPath = getWhisperModelPath(whisperModelName);
+
+    UserPreferencesDbService.updateUserPreferences({
+      speechRecognitionLanguageId: data.mLanguageId,
+    });
+
     sttWhisperStreamingModule.reconfigure(whisperModelPath, data.mLanguageId);
   });
   ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_START"], (_event, _data) => {

@@ -15,3 +15,6 @@ export type CreateTranscriptsData = Awaited<
 export type SaveTranscriptContentsData = Awaited<
   ReturnType<typeof api.saveTranscriptContents>
 >;
+export type QueryUserPreferencesData = Awaited<
+  ReturnType<typeof api.getUserPreferences>
+>;

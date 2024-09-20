@@ -12,6 +12,7 @@ import {
   UserPreferencesDbService,
 } from "./backend/db";
 import { registerDbIPCHandler } from "./ipc/dbIPCHandlers";
+import { registerPreferencesIPCHandler } from "./ipc/preferencesIPCHandlers";
 
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -64,6 +65,7 @@ app.whenReady().then(() => {
   );
   assert.strictEqual(typeof sttWhisperStreamingModule, "object");
 
+  registerPreferencesIPCHandler();
   registerWhisperIPCHandler(sttWhisperStreamingModule);
   registerDbIPCHandler();
 
