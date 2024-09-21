@@ -38,9 +38,12 @@ jobs:
       - name: Download GGML models
         shell: bash
         run: |
-          chmod +x ./whisper.cpp/models/download-ggml-model.sh
-          ./whisper.cpp/models/download-ggml-model.sh base
-          ./whisper.cpp/models/download-ggml-model.sh base.en
+          cd whisper.cpp/models
+          dos2unix download-ggml-model.sh
+          chmod +x download-ggml-model.sh
+          ./download-ggml-model.sh base
+          ./download-ggml-model.sh base.en
+          cd ../..
 
       - name: Verify GGML model files
         if: ${{ hashFiles('whisper.cpp/models/ggml-base.bin') == '' }} || ${{ hashFiles('whisper.cpp/models/ggml-base.en.bin') == '' }}
