@@ -26,7 +26,7 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       authors: "Baris Tikir",
-      name: "Voice Typing",
+      name: "VoiceTyping",
       description:
         "Voice Typing Application integrating Whisper ASR-Model with full offline-support.",
     }),
@@ -34,7 +34,7 @@ const config: ForgeConfig = {
     new MakerRpm({}, ["linux"]),
     new MakerDeb({}, ["linux"]),
     new MakerDMG({
-      name: "Voice Typing (MacOS)",
+      name: "Voice Typing",
     }, ["darwind"]),
   ],
   plugins: [
