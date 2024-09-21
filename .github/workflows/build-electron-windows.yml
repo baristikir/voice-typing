@@ -37,10 +37,20 @@ jobs:
         
       - name: Download GGML models
         run: |
-          cd whisper.cpp/models
-          ./download-ggml-model.sh base
-          ./download-ggml-model.sh base.en
-          cd ../..
+          ./whisper.cpp/models/download-ggml-model.sh base
+          ./whisper.cpp/models/download-ggml-model.sh base.en
+
+      - name: Verify GGML model files
+        run: |
+          dir whisper.cpp\models
+          if not exist "whisper.cpp\models\ggml-base.bin" (
+            echo "ggml-base.bin is missing."
+            exit 1
+          )
+          if not exist "whisper.cpp\models\ggml-base.en.bin" (
+            echo "ggml-base.en.bin is missing."
+            exit 1
+          )
 
       - name: Build Electron app
         run: yarn make
