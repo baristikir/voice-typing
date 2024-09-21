@@ -24,7 +24,19 @@
             "conditions": [
                 [
                     'OS=="win"',
-                    {"msvs_settings": {"VCCLCompilerTool": {"ExceptionHandling": 1}}},
+                    {
+                        "msvs_settings": {
+                            "VCCLCompilerTool": {
+                                "ExceptionHandling": 1,
+                                "AdditionalOptions": [
+                                    "/std:c++17",
+                                    "/D_USE_MATH_DEFINES",
+                                    "/D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING",
+                                    "/DNOMINMAX"
+                                ]
+                            }
+                        }
+                    },
                 ],
                 [
                     'OS=="mac"',
