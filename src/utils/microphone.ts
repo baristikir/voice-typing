@@ -10,9 +10,10 @@ export function checkMicrophonePermission() {
   }
 }
 
-export function requestMicrophonePermission() {
+export async function requestMicrophonePermission() {
   if (process.platform === "darwin") {
-    return systemPreferences.askForMediaAccess("microphone");
+    const result = await systemPreferences.askForMediaAccess("microphone");
+    return result;
   } else if (process.platform === "win32") {
     dialog.showMessageBox({
       type: "info",

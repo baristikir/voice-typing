@@ -13,7 +13,7 @@ export async function setupDatabase(): Promise<void> {
   if (!db) {
     const dbPath = path.join(app.getPath("userData"), "database.sqlite");
     db = new SQL(dbPath, { verbose: console.log });
-    clearDatabase();
+    initDatabase();
   }
 }
 

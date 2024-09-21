@@ -5,6 +5,7 @@ import { MakerSquirrel } from "@electron-forge/maker-squirrel";
 import { MakerZIP } from "@electron-forge/maker-zip";
 import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerDeb } from "@electron-forge/maker-deb";
+import { MakerDMG } from "@electron-forge/maker-dmg";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import path from "path";
@@ -13,6 +14,8 @@ import fs from "fs";
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    appVersion: "0.0.1",
+    appCategoryType: "public.app-category.productivity",
     extendInfo: "./resources/Info.plist",
     extraResource: [
       "./whisper.cpp/models/ggml-base.bin",
@@ -21,10 +24,16 @@ const config: ForgeConfig = {
   },
   rebuildConfig: {},
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      authors: "Baris Tikir",
+      name: "Voice Typing (Win)",
+    }),
     new MakerZIP({}, ["darwin"]),
-    new MakerRpm({}),
-    new MakerDeb({}),
+    new MakerRpm({}, ["linux"]),
+    new MakerDeb({}, ["linux"]),
+    new MakerDMG({
+      name: "Voice Typing (MacOS)",
+    }, ["darwind"]),
   ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
