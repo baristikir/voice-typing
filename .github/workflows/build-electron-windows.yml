@@ -36,7 +36,9 @@ jobs:
         run: yarn list --depth=0
         
       - name: Download GGML models
+        shell: bash
         run: |
+          chmod +x ./whisper.cpp/models/download-ggml-model.sh
           ./whisper.cpp/models/download-ggml-model.sh base
           ./whisper.cpp/models/download-ggml-model.sh base.en
 
