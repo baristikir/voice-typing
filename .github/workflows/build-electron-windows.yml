@@ -19,8 +19,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Yarn
-        run: npm install -g yarn
+      - name: Install Yarn and Node-GYP
+        run: |
+          npm install -g yarn
+          npm install -g node-gyp
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -33,12 +35,6 @@ jobs:
       - name: List installed packages
         run: yarn list --depth=0
         
-      - name: Build native addon
-        run: |
-          npm install -g node-gyp
-          node-gyp configure
-          node-gyp build
-
       - name: Download GGML models
         run: |
           cd whisper.cpp/models

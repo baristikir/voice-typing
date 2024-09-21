@@ -22,10 +22,10 @@
             "defines": ["NAPI_DISABLE_CPP_EXCEPTIONS"],
             "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
             "conditions": [
-                # [
-                #     'OS=="win"',
-                #     {"msvs_settings": {"VCCLCompilerTool": {"ExceptionHandling": 1}}},
-                # ],
+                [
+                    'OS=="win"',
+                    {"msvs_settings": {"VCCLCompilerTool": {"ExceptionHandling": 1}}},
+                ],
                 [
                     'OS=="mac"',
                     {
