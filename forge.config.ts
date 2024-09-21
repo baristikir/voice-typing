@@ -27,6 +27,8 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       authors: "Baris Tikir",
       name: "Voice Typing (Win)",
+      description:
+        "Voice Typing Application integrating Whisper ASR-Model with full offline-support.",
     }),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}, ["linux"]),

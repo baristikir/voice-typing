@@ -51,6 +51,7 @@
     "name": "Baris Tikir",
     "email": "brstkr@icloud.com"
   },
+  "description": "Voice Typing Application integrating Whisper ASR-Model with full offline-support.",
   "files": [
     "build/Release/addon.node"
   ],
