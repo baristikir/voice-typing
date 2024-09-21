@@ -22,6 +22,7 @@ import {
 import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
 import { EditorControls } from "./EditorControls";
 import cuid from "cuid";
+import { Button } from "../ui/Button";
 
 const IS_SIMULATION_MODE = false;
 const TRANSCRIPTION_RATE_IN_MS = 300;
@@ -134,11 +135,23 @@ export const RecordingTranscriptions = (props: Props) => {
 		currentSelection.insertTextContent(textContent);
 	};
 
+	const getFirstSelectionRange = (): Range | null => {
+		const selection = window.getSelection();
+		try {
+			const range = selection.getRangeAt(0);
+			return range;
+		} catch (error) {
+			return null;
+		}
+	};
+
 	const insertLineBreak = () => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
-		console.log(window.getSelection());
-		if (window.getSelection()) {
+
+		const range = getFirstSelectionRange();
+
+		if (range) {
 			insertLineBreakAfterSelection();
 			return;
 		}
@@ -282,75 +295,66 @@ export const RecordingTranscriptions = (props: Props) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
+		appendTranscripts(newTranscriptions);
+		return;
+
 		const selection = window.getSelection();
-		if (!selection) {
-			// appendChild
-			appendTranscripts(newTranscriptions);
-			return;
+		let insertionNode: Node | null = null;
+		let insertionOffset = 0;
+
+		// Determine the insertion point
+		if (selection && selection.rangeCount > 0) {
+			const range = selection.getRangeAt(0);
+			if (textContainer.contains(range.commonAncestorContainer)) {
+				insertionNode = range.startContainer;
+				insertionOffset = range.startOffset;
+			}
 		}
 
-		const range = selection.getRangeAt(0);
-		let currentNode = range.startContainer;
-		let currentOffset = range.startOffset;
+		// If no valid insertion point, append to the end
+		if (!insertionNode) {
+			insertionNode = textContainer;
+			insertionOffset = textContainer.childNodes.length;
+		}
 
-		for (let i = 0; i < newTranscriptions.segments.length; i++) {
-			const segment = newTranscriptions.segments[i];
+		let currentSpan: HTMLSpanElement | null = null;
 
-			let currentParagraph =
-				currentNode.nodeType === Node.TEXT_NODE
-					? currentNode.parentElement.closest("p")
-					: (currentNode as Element).closest("p");
-
-			if (!currentParagraph) {
-				currentParagraph = createParagraph();
-				if (textContainer.lastChild) {
-					textContainer.insertBefore(currentParagraph, textContainer.lastChild.nextSibling);
-				} else {
-					textContainer.appendChild(currentParagraph);
-				}
-				currentNode = currentParagraph.firstChild;
-				currentOffset = 0;
-			}
-
-			let currentSpan: HTMLSpanElement;
-			if (
-				currentNode.nodeType === Node.TEXT_NODE &&
-				currentNode.parentElement.nodeName === "SPAN"
-			) {
-				console.log("is inside TextNode");
-				currentSpan = currentNode.parentElement as HTMLSpanElement;
-			} else {
-				console.log("no TextNode found, creating span element.");
-				currentSpan = createSpanText("", {
+		for (const segment of newTranscriptions.segments) {
+			if (!currentSpan || !segment.isPartial) {
+				// Create a new span
+				currentSpan = createSpanText(segment.text, {
 					id: cuid(),
 					partial: String(segment.isPartial),
 				});
-				if (currentNode === currentParagraph) {
-					console.log("appending to paragraph");
-					currentParagraph.appendChild(currentSpan);
+
+				// Insert the new span
+				if (insertionNode.nodeType === Node.TEXT_NODE) {
+					const parentNode = insertionNode.parentNode;
+					const newTextNode = insertionNode.splitText(insertionOffset);
+					parentNode.insertBefore(currentSpan, newTextNode);
 				} else {
-					console.log("");
-					currentParagraph.insertBefore(currentSpan, currentNode.nextSibling);
+					insertionNode.insertBefore(currentSpan, insertionNode.childNodes[insertionOffset]);
 				}
-				currentNode = currentSpan.firstChild;
-				currentOffset = 0;
+
+				// Update insertion point
+				insertionNode = currentSpan;
+				insertionOffset = currentSpan.textContent.length;
+			} else {
+				// Update existing span
+				currentSpan.textContent = segment.text;
+				currentSpan.dataset.partial = String(segment.isPartial);
+				insertionOffset = currentSpan.textContent.length;
+				// if (currentSpan && !segment.isPartial) {
+				// 	currentSpan = null;
+				// }
 			}
+		}
 
-			const oldText = currentSpan.textContent;
-			const newText = oldText.slice(0, currentOffset) + segment.text + oldText.slice(currentOffset);
-			currentSpan.textContent = newText;
-
-			currentSpan.dataset.partial = String(segment.isPartial);
-
-			currentOffset += segment.text.length;
-
-			if (!segment.isPartial) {
-				currentNode = currentSpan.nextSibling || currentParagraph.nextSibling || textContainer;
-				currentOffset = 0;
-			}
-
-			range.setStart(currentNode, currentOffset);
-			range.setEnd(currentNode, currentOffset);
+		// Update the selection to the end of the inserted text
+		if (currentSpan) {
+			const range = document.createRange();
+			range.setStart(currentSpan, currentSpan.textContent.length);
+			range.setEnd(currentSpan, currentSpan.textContent.length);
 			selection.removeAllRanges();
 			selection.addRange(range);
 		}
@@ -360,20 +364,23 @@ export const RecordingTranscriptions = (props: Props) => {
 		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
 	) => {
 		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+
 		for (let i = 0; i < newTranscriptions.segments.length; i++) {
 			const segment = newTranscriptions.segments[i];
 
 			const lastChild = textContainer.lastChild;
-			const isParagraphElement = lastChild.nodeName === "P";
+			const isParagraphElement = lastChild?.nodeName === "P";
 			if (!lastChild || !isParagraphElement) {
 				const paragraph = createNewParagraph(segment);
 				textContainer.appendChild(paragraph);
 				return;
 			}
 
-			const hasSpanChild = lastChild.lastChild.nodeName === "SPAN";
+			const hasSpanChild = lastChild.lastChild ? lastChild.lastChild?.nodeName === "SPAN" : false;
 			const isPartial =
 				hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
+
 			if (hasSpanChild && isPartial) {
 				const lastText = lastChild.lastChild as HTMLSpanElement;
 				lastText.textContent = segment.text;
@@ -388,6 +395,46 @@ export const RecordingTranscriptions = (props: Props) => {
 				lastChild.appendChild(newText);
 			}
 		}
+	};
+
+	const isCursorInContainer = (container: HTMLElement) => {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return false;
+
+		try {
+			const range = selection.getRangeAt(0);
+			return container.contains(range.commonAncestorContainer);
+		} catch (_) {
+			return false;
+		}
+	};
+
+	const getCursorPosition = (container: HTMLElement) => {
+		const selection = window.getSelection();
+		if (!selection || selection.rangeCount === 0) return null;
+
+		const range = selection.getRangeAt(0);
+		if (!container.contains(range.commonAncestorContainer)) return null;
+
+		let node = range.startContainer;
+		let offset = range.startOffset;
+
+		// If current node is an html element node, find the first text node
+		if (node.nodeType === Node.ELEMENT_NODE) {
+			const textNodes = Array.from(node.childNodes).filter(
+				(child) => child.nodeType === Node.TEXT_NODE,
+			);
+			if (textNodes.length > 0) {
+				node = textNodes[0];
+				offset = 0;
+			}
+		}
+
+		while (node && node.parentNode !== container) {
+			node = node.parentNode;
+		}
+
+		return { node, offset };
 	};
 
 	// Prevent default behavior of inserting <br> in empty paragraphs
@@ -547,6 +594,17 @@ export const RecordingTranscriptions = (props: Props) => {
 				onReplaceResults={handleReplace}
 				handleInsertLineBreak={insertLineBreak}
 			/>
+
+			<Button
+				variant="outline"
+				size="sm"
+				onClick={() => {
+					const position = getCursorPosition(textContainerRef.current);
+					console.log(position);
+				}}
+			>
+				GET CURSOR POSITION
+			</Button>
 			<div className="flex flex-col gap-2 bg-white h-full p-2 border border-gray-200 min-h-[50vh] rounded-b-2xl">
 				{/*
 				<TestSimulationControls

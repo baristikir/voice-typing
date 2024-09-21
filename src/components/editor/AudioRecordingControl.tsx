@@ -73,6 +73,7 @@ export const AudioRecordingControl = (props: Props) => {
 		}
 
 		setIsRecording(false);
+		api.clearAudioData();
 	};
 
 	return isRecording === false ? (
