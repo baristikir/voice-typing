@@ -40,12 +40,6 @@ jobs:
           ./whisper.cpp/models/download-ggml-model.cmd base
           ./whisper.cpp/models/download-ggml-model.cmd base.en
 
-      - name: Verify GGML model files
-        if: ${{ hashFiles('whisper.cpp/models/ggml-base.bin') == '' }} || ${{ hashFiles('whisper.cpp/models/ggml-base.en.bin') == '' }}
-        run: |
-            echo "ggml-base.bin or ggml-base.en.bin is missing."
-            exit 1
-
       - name: Build Electron app
         run: yarn make
 
