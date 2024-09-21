@@ -46,7 +46,6 @@ speech to text. The application is built using Electron.
 - [ ] Configurable dictation (toggle or push-to-talk)
 - [ ] Customizable keyboard shortcuts
   - [ ] Dictationmode Shortcut (either for toggling or push-to-talk)
-  - [ ] Editmode Shortcut
 
 ## Requirements
 
