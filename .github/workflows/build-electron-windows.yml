@@ -37,8 +37,8 @@ jobs:
         
       - name: Download GGML models
         run: |
-          ./download-ggml-model.cmd base
-          ./download-ggml-model.cmd base.en
+          ./whisper.cpp/models/download-ggml-model.cmd base
+          ./whisper.cpp/models/download-ggml-model.cmd base.en
 
       - name: Verify GGML model files
         if: ${{ hashFiles('whisper.cpp/models/ggml-base.bin') == '' }} || ${{ hashFiles('whisper.cpp/models/ggml-base.en.bin') == '' }}
