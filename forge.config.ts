@@ -26,7 +26,7 @@ const config: ForgeConfig = {
   makers: [
     new MakerSquirrel({
       authors: "Baris Tikir",
-      name: "Voice Typing (Win)",
+      name: "Voice Typing",
       description:
         "Voice Typing Application integrating Whisper ASR-Model with full offline-support.",
     }),
