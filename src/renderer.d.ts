@@ -40,7 +40,7 @@ export interface ElectronAPI {
       })[];
     },
   ) => Promise<Transcript>;
-  deleteTranscript: (id: number) => void;
+  deleteTranscript: (id: number) => Promise<boolean>;
   saveTranscriptContents: (
     data: {
       id: number;

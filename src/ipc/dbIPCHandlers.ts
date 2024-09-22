@@ -85,4 +85,9 @@ export function registerDbIPCHandler() {
       return status;
     },
   );
+
+  ipcMain.handle(DB_IPC_CHANNELS["TRANSCRIPT_DELETE"], (_event, data) => {
+    console.log("[ dbIPC ] Deleting transcript from database.");
+    return TranscriptsDbService.deleteTranscript(data);
+  });
 }
