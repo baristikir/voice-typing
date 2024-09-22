@@ -17,6 +17,7 @@ import {
   checkMicrophonePermission,
   requestMicrophonePermission,
 } from "./utils/microphone";
+import { registerDialogIPCHandler } from "./ipc/dialogIPCHandlers";
 
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -98,6 +99,7 @@ app.whenReady().then(() => {
   );
   assert.strictEqual(typeof sttWhisperStreamingModule, "object");
 
+  registerDialogIPCHandler();
   registerPreferencesIPCHandler();
   registerWhisperIPCHandler(sttWhisperStreamingModule);
   registerDbIPCHandler();

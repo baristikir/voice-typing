@@ -12,6 +12,7 @@ type STTWhisperStreamingModule = {
   addAudioData: (data: Float32Array) => void;
   clearAudioData: () => void;
   getTranscribedText: () => string;
+  transcribeFileInput: (filePath: string) => any;
 };
 export function registerWhisperIPCHandler(
   sttWhisperStreamingModule: STTWhisperStreamingModule,
@@ -60,6 +61,12 @@ export function registerWhisperIPCHandler(
     WHISPER_IPC_CHANNELS["WHISPER_CLEAR_AUDIO"],
     (_event, _data) => {
       sttWhisperStreamingModule.clearAudioData();
+    },
+  );
+  ipcMain.handle(
+    WHISPER_IPC_CHANNELS["WHISPER_TRANSCRIBE_FILE_INPUT"],
+    (_event, data) => {
+      return sttWhisperStreamingModule.transcribeFileInput(data);
     },
   );
 }

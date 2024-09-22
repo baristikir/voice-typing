@@ -16,4 +16,9 @@ export const WHISPER_IPC_CHANNELS = {
   WHISPER_ADD_AUDIO: "whisper:add_audio",
   WHISPER_CLEAR_AUDIO: "whisper:clear_audio",
   WHISPER_GET_TRANSCRIBED_TEXT: "whisper:get_transcribed_text",
+  WHISPER_TRANSCRIBE_FILE_INPUT: "whisper:trnascribe_file_input",
+} as const;
+
+export const DIALOG_IPC_CHANNELS = {
+  DIALOG_OPEN: "dialog:open",
 } as const;

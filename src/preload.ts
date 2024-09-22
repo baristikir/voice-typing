@@ -1,7 +1,11 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-import { contextBridge, ipcRenderer } from "electron";
-import { DB_IPC_CHANNELS, WHISPER_IPC_CHANNELS } from "./ipc/IPC";
+import { contextBridge, ipcRenderer, OpenDialogOptions } from "electron";
+import {
+  DB_IPC_CHANNELS,
+  DIALOG_IPC_CHANNELS,
+  WHISPER_IPC_CHANNELS,
+} from "./ipc/IPC";
 import { TranscriptContent } from "./shared/models";
 
 console.log("[ preload ] Preload script loaded.");
@@ -43,4 +47,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     id: number;
     contents: TranscriptContent[];
   }) => ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_SAVE_CONTENTS"], data),
+  transcribeFileInput: (data: string) =>
+    ipcRenderer.invoke(
+      WHISPER_IPC_CHANNELS["WHISPER_TRANSCRIBE_FILE_INPUT"],
+      data,
+    ),
+  openDialog: (options: OpenDialogOptions) =>
+    ipcRenderer.invoke(DIALOG_IPC_CHANNELS["DIALOG_OPEN"], options),
 });

@@ -1,3 +1,4 @@
+import { OpenDialogOptions } from "electron";
 import {
   Transcript,
   TranscriptContent,
@@ -51,6 +52,8 @@ export interface ElectronAPI {
       contents: TranscriptContent[];
     },
   ) => Promise<boolean>;
+  transcribeFileInput: (filePath: string) => Promise<TranscribedSegments>;
+  openDialog: (options: OpenDialogOptions) => Promise<string>;
 }
 
 declare global {

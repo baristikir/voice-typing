@@ -16,6 +16,7 @@ class STTAddon : public Napi::ObjectWrap<STTAddon>
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
   Napi::Value ClearAudioData(const Napi::CallbackInfo& info);
   Napi::Value GetTranscribedText(const Napi::CallbackInfo& info);
+  Napi::Value TranscribeFileInput(const Napi::CallbackInfo& info);
   Napi::Value Reconfigure(const Napi::CallbackInfo& info);  
   void Destroy(const Napi::CallbackInfo& info);
 };
@@ -30,6 +31,7 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
        InstanceMethod<&STTAddon::AddAudioData>("addAudioData"),
        InstanceMethod<&STTAddon::ClearAudioData>("clearAudioData"),
        InstanceMethod<&STTAddon::GetTranscribedText>("getTranscribedText"),
+       InstanceMethod<&STTAddon::TranscribeFileInput>("transcribeFileInput"),
        InstanceMethod<&STTAddon::Reconfigure>("reconfigure")});
 
   Napi::FunctionReference* constructor = new Napi::FunctionReference();
@@ -107,6 +109,36 @@ Napi::Value STTAddon::GetTranscribedText(const Napi::CallbackInfo& info)
     js_segment.Set("text", segment.text);
     js_segment.Set("isPartial", segment.is_partial);
     js_segments.Set(i, js_segment);
+  }
+
+  Napi::Object js_payload = Napi::Object::New(env);
+  js_payload.Set("segments", js_segments);
+
+  return js_payload;
+}
+
+Napi::Value STTAddon::TranscribeFileInput(const Napi::CallbackInfo& info)
+{
+  if (info.Length() < 1 || !info[0].IsString()) {
+    Napi::Error::New(info.Env(), "Expected a String as first argument")
+        .ThrowAsJavaScriptException();
+    return Napi::Number::New(info.Env(), 1);
+  }
+
+  std::vector<transcribed_segment> segments;
+  Napi::String file_path = info[0].As<Napi::String>();
+  segments = instance->TranscribeFileInput(file_path);
+ 
+  Napi::Env env = info.Env();
+  Napi::Array js_segments= Napi::Array::New(env, segments.size());
+
+  int i = 0;
+  for (const transcribed_segment& segment : segments) {
+    Napi::Object js_segment = Napi::Object::New(env);
+    js_segment.Set("text", segment.text);
+    js_segment.Set("isPartial", segment.is_partial);
+    js_segments.Set(i, js_segment);
+    i++;
   }
 
   Napi::Object js_payload = Napi::Object::New(env);

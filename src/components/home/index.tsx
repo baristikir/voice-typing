@@ -1,4 +1,4 @@
-import { Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { FileAudio, Gear, MagnifyingGlass, Plus } from "@phosphor-icons/react";
 import { Button } from "../ui/Button";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -58,6 +58,15 @@ export function HomeContent(_: Props) {
 	const { data: preferencesData, isLoading } = useDbUserPreferences();
 	const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
 	const handleOpenSettingsDialog = () => setIsSettingsDialogOpen(true);
+	const handleImportFileDialog = async () => {
+		const filePath = await api.openDialog({
+			properties: ["openFile"],
+			filters: [{ name: "Audio", extensions: ["wav"] }],
+			title: "Audiodatei Importieren",
+		});
+		console.log("filepath: ", filePath);
+		console.log("segments: ", await api.transcribeFileInput(filePath.filePaths[0]));
+	};
 
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
@@ -70,7 +79,7 @@ export function HomeContent(_: Props) {
 					</div>
 				</div>
 
-				<div>
+				<div className="flex items-center gap-1">
 					{!isLoading && (
 						<SettingsDialog
 							defaultValues={preferencesData}
@@ -78,6 +87,10 @@ export function HomeContent(_: Props) {
 							setIsOpen={setIsSettingsDialogOpen}
 						/>
 					)}
+					<Button size="sm" variant="default" onClick={handleImportFileDialog}>
+						<FileAudio weight="fill" className="w-5 h-5 mr-1" />
+						Audiodatei Importieren
+					</Button>
 					<Button size="sm" variant="default" onClick={handleOpenSettingsDialog}>
 						<Gear weight="fill" className="w-4 h-4 mr-1" />
 						Einstellungen
