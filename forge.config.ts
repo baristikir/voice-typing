@@ -16,7 +16,7 @@ const config: ForgeConfig = {
     asar: true,
     appVersion: "0.0.1",
     appCategoryType: "public.app-category.productivity",
-    executableName: "voice-typing-app",
+    executableName: "voice-typing",
     extendInfo: "./resources/Info.plist",
     extraResource: [
       "./whisper.cpp/models/ggml-base.bin",
