@@ -1,18 +1,13 @@
-import { OpenDialogOptions } from "electron";
+import { OpenDialogOptions, OpenDialogReturnValue } from "electron";
 import {
   Transcript,
   TranscriptContent,
   UserPreferences,
 } from "./shared/models";
-
-type TranscribedSegmentPayload = {
-  text: string;
-  isPartial: boolean;
-};
-
-type TranscribedSegments = {
-  segments: TranscribedSegmentPayload[];
-};
+import {
+  TranscribedSegmentPayload,
+  TranscribedSegments,
+} from "./shared/ipcPayloads";
 
 export interface ElectronAPI {
   // User Preferences
@@ -34,7 +29,7 @@ export interface ElectronAPI {
   queryTranscriptById: (id: number) => Promise<Transcript>;
   createTranscript: (
     title: string,
-    content?: Omit<TranscriptContent, "id">,
+    payload?: TranscribedSegments,
   ) => Promise<Transcript>;
   updateTranscript: (
     data: {
@@ -53,7 +48,7 @@ export interface ElectronAPI {
     },
   ) => Promise<boolean>;
   transcribeFileInput: (filePath: string) => Promise<TranscribedSegments>;
-  openDialog: (options: OpenDialogOptions) => Promise<string>;
+  openDialog: (options: OpenDialogOptions) => Promise<OpenDialogReturnValue>;
 }
 
 declare global {

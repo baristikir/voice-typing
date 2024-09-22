@@ -32,6 +32,7 @@ export function registerDbIPCHandler() {
 
     const transcript = TranscriptsDbService.createTranscript(
       data.title,
+      data.payload,
     );
 
     return transcript;

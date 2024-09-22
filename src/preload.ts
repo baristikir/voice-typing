@@ -7,6 +7,7 @@ import {
   WHISPER_IPC_CHANNELS,
 } from "./ipc/IPC";
 import { TranscriptContent } from "./shared/models";
+import { TranscribedSegments } from "./shared/ipcPayloads";
 
 console.log("[ preload ] Preload script loaded.");
 
@@ -29,8 +30,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_GET_ALL"]),
   queryTranscriptById: (id: string) =>
     ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_GET"], id),
-  createTranscript: (title: string, text: string) =>
-    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], { title, text }),
+  createTranscript: (title: string, payload: TranscribedSegments) =>
+    ipcRenderer.invoke(DB_IPC_CHANNELS["TRANSCRIPT_CREATE"], {
+      title,
+      payload,
+    }),
   updateTranscript: (
     data: {
       id: number;

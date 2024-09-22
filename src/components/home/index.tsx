@@ -6,6 +6,8 @@ import dayjs from "../utils/dayjs";
 import { api, QueryTranscriptsData, QueryUserPreferencesData } from "@/utils/rendererElectronAPI";
 import { SettingsDialog } from "./SettingsDialog";
 import { CreateNewTranscriptDialog } from "./CreateTranscriptDialog";
+import { LoadingSectionspinner } from "../ui/LoadingSpinner";
+import { TranscribedSegmentPayload } from "@/shared/ipcPayloads";
 
 function useDbTranscripts() {
 	const [data, setData] = useState<QueryTranscriptsData>();
@@ -57,6 +59,9 @@ export function HomeContent(_: Props) {
 	const { data: transcriptsData } = useDbTranscripts();
 	const { data: preferencesData, isLoading } = useDbUserPreferences();
 	const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+	const [isImportingFile, setIsImportingFile] = useState(false);
+	const navigate = useNavigate();
+
 	const handleOpenSettingsDialog = () => setIsSettingsDialogOpen(true);
 	const handleImportFileDialog = async () => {
 		const filePath = await api.openDialog({
@@ -64,58 +69,86 @@ export function HomeContent(_: Props) {
 			filters: [{ name: "Audio", extensions: ["wav"] }],
 			title: "Audiodatei Importieren",
 		});
-		console.log("filepath: ", filePath);
-		console.log("segments: ", await api.transcribeFileInput(filePath.filePaths[0]));
+
+		if (filePath) {
+			setIsImportingFile(true);
+		}
+
+		try {
+			const transcribedSegments = await api.transcribeFileInput(filePath.filePaths[0]);
+			if (transcribedSegments) {
+				setIsImportingFile(false);
+
+				const data = await api.createTranscript("Untitled", transcribedSegments);
+				navigate(`transcripts/${String(data.id)}`);
+			}
+		} catch (error) {
+			setIsImportingFile(false);
+			console.error("File transcription failed abruptly.");
+		}
 	};
 
 	return (
-		<div className="flex flex-col gap-6 w-full h-full">
-			<div className="flex items-start justify-between w-full">
-				<div className="flex flex-col gap-2">
-					<h1 className="text-4xl font-semibold">Übersicht</h1>
-					<div className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500">
-						<MagnifyingGlass className="w-4 h-4 mr-2" />
-						Skript suchen..
+		<>
+			{isImportingFile && (
+				<div className="z-[999] absolute inset-0 w-full h-full bg-black/70 flex flex-col items-center justify-center gap-2 text-white">
+					<LoadingSectionspinner size="sm" />
+					<div className="flex flex-col items-center max-w-md">
+						<h1 className="text-xl text-center font-semibold">
+							Importierte Datei wird transkribiert...
+						</h1>
+						<h3 className="font-normal">(Anwendung nicht schliessen!)</h3>
+					</div>
+				</div>
+			)}
+			<div className="flex flex-col gap-6 w-full h-full">
+				<div className="flex items-start justify-between w-full">
+					<div className="flex flex-col gap-2">
+						<h1 className="text-4xl font-semibold">Übersicht</h1>
+						<div className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500">
+							<MagnifyingGlass className="w-4 h-4 mr-2" />
+							Skript suchen..
+						</div>
+					</div>
+
+					<div className="flex items-center gap-1">
+						{!isLoading && (
+							<SettingsDialog
+								defaultValues={preferencesData}
+								isOpen={isSettingsDialogOpen}
+								setIsOpen={setIsSettingsDialogOpen}
+							/>
+						)}
+						<Button size="sm" variant="default" onClick={handleImportFileDialog}>
+							<FileAudio weight="fill" className="w-5 h-5 mr-1" />
+							Audiodatei Importieren
+						</Button>
+						<Button size="sm" variant="default" onClick={handleOpenSettingsDialog}>
+							<Gear weight="fill" className="w-4 h-4 mr-1" />
+							Einstellungen
+						</Button>
 					</div>
 				</div>
 
-				<div className="flex items-center gap-1">
-					{!isLoading && (
-						<SettingsDialog
-							defaultValues={preferencesData}
-							isOpen={isSettingsDialogOpen}
-							setIsOpen={setIsSettingsDialogOpen}
-						/>
-					)}
-					<Button size="sm" variant="default" onClick={handleImportFileDialog}>
-						<FileAudio weight="fill" className="w-5 h-5 mr-1" />
-						Audiodatei Importieren
-					</Button>
-					<Button size="sm" variant="default" onClick={handleOpenSettingsDialog}>
-						<Gear weight="fill" className="w-4 h-4 mr-1" />
-						Einstellungen
-					</Button>
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
+					<CreateNewDictation />
+					{transcriptsData?.map((item) => {
+						return (
+							<DictationCard
+								key={item.id}
+								id={item.id}
+								title={item.title}
+								shortDescription={
+									item.contents?.[0]?.content?.substring(0, 100) +
+									(item.contents?.[0]?.content?.length > 100 ? "..." : "")
+								}
+								lastEdited={item.updatedAt}
+							/>
+						);
+					})}
 				</div>
 			</div>
-
-			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
-				<CreateNewDictation />
-				{transcriptsData?.map((item) => {
-					return (
-						<DictationCard
-							key={item.id}
-							id={item.id}
-							title={item.title}
-							shortDescription={
-								item.contents?.[0]?.content?.substring(0, 100) +
-								(item.contents?.[0]?.content?.length > 100 ? "..." : "")
-							}
-							lastEdited={item.updatedAt}
-						/>
-					);
-				})}
-			</div>
-		</div>
+		</>
 	);
 }
 

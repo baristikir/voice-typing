@@ -6,6 +6,8 @@ import {
   TranscriptContent,
   UserPreferences,
 } from "@/shared/models";
+import { TranscribedSegments } from "@/shared/ipcPayloads";
+import cuid from "cuid";
 
 export let db: SQL.Database;
 
@@ -132,6 +134,7 @@ interface ITranscriptsDbService {
   getTranscriptById(id: number): Transcript;
   createTranscript(
     title: string,
+    payload: TranscribedSegments,
   ): Transcript;
   updateTranscript(
     id: number,
@@ -168,14 +171,32 @@ export const TranscriptsDbService: ITranscriptsDbService = {
     return groupTranscriptContent(rows)[0];
   },
   createTranscript(
-    title: string,
-  ): Transcript {
+    title,
+    payload,
+  ) {
     const insertTranscriptStmt = db.prepare(
       "INSERT INTO transcripts (title) VALUES (?)",
     );
 
+    const insertContentStmt = db.prepare(`
+        INSERT INTO transcript_contents (transcript_id, id, content, content_type, order_num)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+
     const transcript = db.transaction((title) => {
       const { lastInsertRowid } = insertTranscriptStmt.run(title);
+      if (payload && payload.segments.length > 0) {
+        for (let i = 0; i < payload.segments.length; i++) {
+          const segment = payload.segments[i];
+          insertContentStmt.run(
+            lastInsertRowid,
+            cuid(),
+            segment.text,
+            "text",
+            i,
+          );
+        }
+      }
       return TranscriptsDbService.getTranscriptById(lastInsertRowid as number);
     });
 

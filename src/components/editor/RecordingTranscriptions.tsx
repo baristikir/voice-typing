@@ -585,28 +585,31 @@ export const RecordingTranscriptions = (props: Props) => {
 	};
 
 	return (
-		<div className="min-h-screen rounded-xl p-2">
-			<EditorControls
-				currentMode={props.editorMode}
-				onEditorModeChange={props.onEditorModeChange}
-				onSaveContents={handleSaveContents}
-				onSearchQuery={handleSearch}
-				onReplaceResults={handleReplace}
-				handleInsertLineBreak={insertLineBreak}
-			/>
+		<>
+			<div>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={() => {
+						const cursorPosition = getCursorPosition(textContainerRef.current);
+						console.log(cursorPosition);
+					}}
+				>
+					Print Cursor State
+				</Button>
+			</div>
+			<div className="min-h-screen rounded-xl p-2">
+				<EditorControls
+					currentMode={props.editorMode}
+					onEditorModeChange={props.onEditorModeChange}
+					onSaveContents={handleSaveContents}
+					onSearchQuery={handleSearch}
+					onReplaceResults={handleReplace}
+					handleInsertLineBreak={insertLineBreak}
+				/>
 
-			<Button
-				variant="outline"
-				size="sm"
-				onClick={() => {
-					const position = getCursorPosition(textContainerRef.current);
-					console.log(position);
-				}}
-			>
-				GET CURSOR POSITION
-			</Button>
-			<div className="flex flex-col gap-2 bg-white h-full p-2 border border-gray-200 min-h-[50vh] rounded-b-2xl">
-				{/*
+				<div className="flex flex-col gap-2 bg-white h-full p-2 border-x border-b border-gray-200 min-h-[50vh] rounded-b-2xl drop-shadow-sm">
+					{/*
 				<TestSimulationControls
 					editorMode={props.editorMode}
 					pauseSimulation={pauseDictation}
@@ -617,13 +620,13 @@ export const RecordingTranscriptions = (props: Props) => {
 					insertHeadline={insertHeadline}
 				/>
 */}
-				<div
-					// contentEditable={props.editorMode !== EditorMode.DICTATING}
-					contentEditable={true}
-					ref={textContainerRef}
-					className="focus:outline-none"
-				></div>
+					<div
+						contentEditable={textContainerRef.current?.childNodes?.length > 0}
+						ref={textContainerRef}
+						className="focus:outline-none"
+					></div>
+				</div>
 			</div>
-		</div>
+		</>
 	);
 };

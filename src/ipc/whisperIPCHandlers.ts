@@ -3,6 +3,7 @@ import { ipcMain } from "electron";
 import { WHISPER_IPC_CHANNELS } from "./IPC";
 import { getWhisperModelName, getWhisperModelPath } from "@/utils/whisperModel";
 import { UserPreferencesDbService } from "@/backend/db";
+import { TranscribedSegments } from "@/shared/ipcPayloads";
 
 // Depends on addon.cc definition from STTAddon::Init
 type STTWhisperStreamingModule = {
@@ -12,7 +13,7 @@ type STTWhisperStreamingModule = {
   addAudioData: (data: Float32Array) => void;
   clearAudioData: () => void;
   getTranscribedText: () => string;
-  transcribeFileInput: (filePath: string) => any;
+  transcribeFileInput: (filePath: string) => TranscribedSegments;
 };
 export function registerWhisperIPCHandler(
   sttWhisperStreamingModule: STTWhisperStreamingModule,
