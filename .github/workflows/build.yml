@@ -1,0 +1,120 @@
+name: Build Electron Application
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'      
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Yarn and Node-GYP
+        run: |
+          npm install -g yarn
+          npm install -g node-gyp
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Display yarn and Node.js versions
+        run: |
+          node --version
+          yarn --version
+
+      - name: List installed packages
+        run: yarn list --depth=0
+        
+      - name: Download GGML models
+        run: |
+          ./whisper.cpp/models/download-ggml-model.cmd base
+          ./whisper.cpp/models/download-ggml-model.cmd base.en
+
+      - name: Build Electron app
+        run: yarn make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: |
+            out/make/**/*.exe
+            out/make/**/*.msi
+            out/make/**/*.zip
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-logs
+          path: out/forge.log
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository  
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Yarn and Node-GYP
+        run: |
+          npm install -g yarn
+          npm install -g node-gyp
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Display Yarn and Node.js versions
+        run: |
+          node --version
+          yarn --version
+
+      - name: List installed packages
+        run: yarn list --depth=0
+
+      - name: Download GGML models
+        run: |
+          ./whisper.cpp/models/download-ggml-model.sh base
+          ./whisper.cpp/models/download-ggml-model.sh base.en
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Build Electron Application
+        run: yarn make
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-app
+          path: |
+            out/make/**/*.deb
+            out/make/**/*.rpm
+            out/make/**/*.zip
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-logs-linux
+          path: out/forge.log
