@@ -1,0 +1,104 @@
+name: Release Electron Application
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Linux Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repositories
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install -g yarn
+          yarn install --frozen-lockfile
+
+      - name: Build Changelog
+        id: github_release
+        uses: release-drafter/release-drafter@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: ${{ steps.github_release.outputs.body }}
+          draft: false
+          prerelease: false
+
+  build-and-publish:
+    needs: release
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Yarn and Node-GYP
+        run: |
+          npm install -g yarn
+          npm install -g node-gyp
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install system dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Download GGML models
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ./whisper.cpp/models/download-ggml-model.cmd base
+            ./whisper.cpp/models/download-ggml-model.cmd base.en
+          else
+            ./whisper.cpp/models/download-ggml-model.sh base
+            ./whisper.cpp/models/download-ggml-model.sh base.en
+          fi
+        shell: bash
+
+      - name: Build and Publish Electron app
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: yarn run publish
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-app
+          path: out/make/**/*.*
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-logs-${{ runner.os }}
+          path: out/forge.log     
