@@ -16,6 +16,7 @@ const config: ForgeConfig = {
     asar: true,
     appVersion: "0.0.1",
     appCategoryType: "public.app-category.productivity",
+    executableName: "voice-typing-app",
     extendInfo: "./resources/Info.plist",
     extraResource: [
       "./whisper.cpp/models/ggml-base.bin",
@@ -32,7 +33,11 @@ const config: ForgeConfig = {
     }),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}, ["linux"]),
-    new MakerDeb({}, ["linux"]),
+    new MakerDeb({
+      options: {
+        name: "voice-typing-app",
+      },
+    }, ["linux"]),
     new MakerDMG({
       name: "Voice Typing",
     }, ["darwind"]),
