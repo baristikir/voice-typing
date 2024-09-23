@@ -57,8 +57,35 @@ function initDatabase() {
       CREATE TRIGGER IF NOT EXISTS update_transcripts_timestamp
       AFTER UPDATE ON transcripts
       BEGIN
-        UPDATE transcripts SET updatedAt = CURRENT_TIMESTAMP
+        UPDATE transcripts SET updatedAt = datetime('now', 'localtime')
         WHERE id = NEW.id;
+      END
+    `);
+
+  db.exec(`
+      CREATE TRIGGER IF NOT EXISTS update_transcripts_timestamp_on_content_insert
+      AFTER INSERT ON transcript_contents
+      BEGIN
+        UPDATE transcripts SET updatedAt = datetime('now', 'localtime')
+        WHERE id = NEW.transcript_id;
+      END
+    `);
+
+  db.exec(`
+      CREATE TRIGGER IF NOT EXISTS update_transcripts_timestamp_on_content_update
+      AFTER UPDATE ON transcript_contents
+      BEGIN
+        UPDATE transcripts SET updatedAt = datetime('now', 'localtime')
+        WHERE id = (SELECT transcript_id FROM transcript_contents WHERE id = NEW.id);
+      END
+    `);
+
+  db.exec(`
+      CREATE TRIGGER IF NOT EXISTS update_transcripts_timestamp_on_content_delete
+      AFTER DELETE ON transcript_contents
+      BEGIN
+        UPDATE transcripts SET updatedAt = datetime('now', 'localtime')
+        WHERE id = OLD.transcript_id;
       END
     `);
 

@@ -40,7 +40,7 @@ export const EditorHeader = (props: Props) => {
 			<TranscriptTitle title={props.title} />
 			<div className="flex gap-2 items-center">
 				<Link to={"/"}>
-					<Button size="sm" variant="default">
+					<Button size="sm" variant="outline">
 						<ArrowFatLeft weight="duotone" className="w-4 h-4 m-1" />
 						Zurück
 					</Button>
