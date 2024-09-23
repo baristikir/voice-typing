@@ -48,7 +48,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-app
+          name: windows-app-x64
           path: |
             out/make/**/*.exe
             out/make/**/*.msi
@@ -109,7 +109,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: linux-app
+          name: linux-app-${{ matrix.arch }}-${{ github.run_id }}
           path: |
             out/make/**/*.deb
             out/make/**/*.rpm
@@ -119,5 +119,5 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: forge-logs-linux
+          name: forge-logs-linux-${{ matrix.arch }}-${{ github.run_id }}
           path: out/forge.log
