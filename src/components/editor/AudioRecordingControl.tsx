@@ -5,17 +5,28 @@ import { assert } from "../utils/assert";
 import { EditorMode } from "./useEditor";
 import { api } from "@/utils/rendererElectronAPI";
 import { Microphone, Pause } from "@phosphor-icons/react";
+import { useAtomValue } from "jotai";
+import { selectedAudioDeviceAtom } from "@/state/audioAtoms";
 
 interface Props {
 	onEditorModeChange(payload: EditorMode): void;
 }
 export const AudioRecordingControl = (props: Props) => {
+	const deviceId = useAtomValue(selectedAudioDeviceAtom);
 	const [isRecording, setIsRecording] = useState(false);
 	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	const recordAudio = async () => {
 		props.onEditorModeChange(EditorMode.DICTATING);
-		const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		const stream = deviceId
+			? await navigator.mediaDevices.getUserMedia({
+					audio: {
+						deviceId: {
+							exact: deviceId,
+						},
+					},
+				})
+			: await navigator.mediaDevices.getUserMedia({ audio: true });
 
 		try {
 			const audioContext = new AudioContext({ sampleRate: 16000 });
