@@ -4,7 +4,7 @@
 		- Insert Headline
 		- Insert Linebreak
 */
-import { ChangeEvent, memo, useState } from "react";
+import { ChangeEvent, memo, useEffect, useState } from "react";
 import { Button } from "../ui/Button";
 import { ArticleNyTimes, FloppyDisk, MagnifyingGlass, Paragraph } from "@phosphor-icons/react";
 import { EditorMode } from "./useEditor";
@@ -16,12 +16,19 @@ interface Props {
 	onSaveContents(): void;
 	onSearchQuery(query: string): void;
 	onReplaceResults(replaceText: string, searchText: string, replaceAll?: boolean): void;
+	handleResetHighlightedNodes(): void;
 	handleInsertLineBreak(): void;
 }
 export const EditorControls = (props: Props) => {
 	const [isSearchActive, setIsSearchActive] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [replaceQuery, setReplaceQuery] = useState("");
+
+	useEffect(() => {
+		if (isSearchActive === false) {
+			props.handleResetHighlightedNodes();
+		}
+	}, [isSearchActive]);
 
 	const handleTriggerSearch = () => {
 		props.onSearchQuery(searchQuery);

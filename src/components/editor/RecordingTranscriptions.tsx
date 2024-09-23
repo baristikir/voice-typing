@@ -584,6 +584,12 @@ export const RecordingTranscriptions = (props: Props) => {
 		return contents;
 	};
 
+	const handleResetHighlightedNodes = () => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+		Array.from(textContainer.childNodes).forEach(removeHighlightFromNode);
+	};
+
 	return (
 		<>
 			<div>
@@ -606,6 +612,7 @@ export const RecordingTranscriptions = (props: Props) => {
 					onSearchQuery={handleSearch}
 					onReplaceResults={handleReplace}
 					handleInsertLineBreak={insertLineBreak}
+					handleResetHighlightedNodes={handleResetHighlightedNodes}
 				/>
 
 				<div className="flex flex-col gap-2 bg-white h-full p-2 border-x border-b border-gray-200 min-h-[50vh] rounded-b-2xl drop-shadow-sm">
