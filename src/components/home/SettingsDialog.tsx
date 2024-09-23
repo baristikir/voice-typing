@@ -6,17 +6,26 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useAtom } from "jotai";
 import { useEffect, useState } from "react";
 
-enum WhisperModelLanguage {
+export enum WhisperModelLanguage {
 	English = "en",
 	German = "de",
 }
 
-function convertIdToLanguage(languageId: number): WhisperModelLanguage {
+export function convertIdToLanguage(languageId: number): WhisperModelLanguage {
 	switch (languageId) {
 		case 0:
 			return WhisperModelLanguage.German;
 		case 1:
 			return WhisperModelLanguage.English;
+	}
+}
+
+function convertLanguageToId(language: WhisperModelLanguage): number {
+	switch (language) {
+		case WhisperModelLanguage.German:
+			return 0;
+		case WhisperModelLanguage.English:
+			return 1;
 	}
 }
 
@@ -35,7 +44,7 @@ export const SettingsDialog = (props: Props) => {
 	);
 
 	const handleSubmit = async () => {
-		// Save Device ID
+		// Save Device ID (only when changed)
 		if (selectedDeviceId && selectedDeviceId !== deviceId) {
 			setDeviceId(selectedDeviceId);
 			const data = await api.updateUserPreferences({
@@ -44,17 +53,14 @@ export const SettingsDialog = (props: Props) => {
 			props.optimisticUpdater(data);
 		}
 
-		// Save language
+		// Save language (only when changed)
 		const defaultLanguage = convertIdToLanguage(props.defaultValues.speechRecognitionLanguageId);
-		if (language === defaultLanguage) return;
-		if (language === WhisperModelLanguage.German) {
-			await api.reconfigure({
-				mLanguageId: 0,
+		if (language && language !== defaultLanguage) {
+			const languageId = convertLanguageToId(language);
+			const data = await api.reconfigure({
+				mLanguageId: languageId,
 			});
-		} else if (language === WhisperModelLanguage.English) {
-			await api.reconfigure({
-				mLanguageId: 1,
-			});
+			props.optimisticUpdater(data);
 		}
 	};
 

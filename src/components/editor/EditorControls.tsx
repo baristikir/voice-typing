@@ -6,16 +6,9 @@
 */
 import { ChangeEvent, memo, useState } from "react";
 import { Button } from "../ui/Button";
-import {
-	ArticleNyTimes,
-	FloppyDisk,
-	MagnifyingGlass,
-	Paragraph,
-	PencilSimple,
-} from "@phosphor-icons/react";
+import { ArticleNyTimes, FloppyDisk, MagnifyingGlass, Paragraph } from "@phosphor-icons/react";
 import { EditorMode } from "./useEditor";
 import { AudioRecordingControl } from "./AudioRecordingControl";
-import { StatusBar } from "./StatusBar";
 
 interface Props {
 	currentMode: EditorMode;

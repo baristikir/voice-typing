@@ -98,7 +98,9 @@ export function HomeContent(_: Props) {
 				setIsImportingFile(false);
 
 				const data = await api.createTranscript("Untitled", transcribedSegments);
-				navigate(`transcripts/${String(data.id)}`);
+				navigate(
+					`transcripts/${String(data.id)}?languageId=${String(preferencesData.speechRecognitionLanguageId)}`,
+				);
 			}
 		} catch (error) {
 			setIsImportingFile(false);
@@ -151,20 +153,22 @@ export function HomeContent(_: Props) {
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-full">
 					<CreateNewDictation />
-					{transcriptsData?.map((item) => {
-						return (
-							<DictationCard
-								key={item.id}
-								id={item.id}
-								title={item.title}
-								shortDescription={
-									item.contents?.[0]?.content?.substring(0, 100) +
-									(item.contents?.[0]?.content?.length > 100 ? "..." : "")
-								}
-								lastEdited={item.updatedAt}
-							/>
-						);
-					})}
+					{preferencesData &&
+						transcriptsData?.map((item) => {
+							return (
+								<DictationCard
+									key={item.id}
+									id={item.id}
+									languageId={preferencesData.speechRecognitionLanguageId}
+									title={item.title}
+									shortDescription={
+										item.contents?.[0]?.content?.substring(0, 100) +
+										(item.contents?.[0]?.content?.length > 100 ? "..." : "")
+									}
+									lastEdited={item.updatedAt}
+								/>
+							);
+						})}
 				</div>
 			</div>
 		</>
@@ -206,11 +210,13 @@ interface DictationCardProps {
 	// max 14 words
 	shortDescription: string;
 	lastEdited: Date;
+	// preferences
+	languageId: number;
 }
 const DictationCard = (props: DictationCardProps) => {
 	return (
 		<Link
-			to={`/transcripts/${String(props.id)}`}
+			to={`/transcripts/${String(props.id)}?languageId=${String(props.languageId)}`}
 			className="h-64 col-span-1 flex flex-col items-start justify-between border rounded-2xl bg-white px-4 pt-6 pb-4 gap-2 drop-shadow-sm hover:bg-gray-100 cursor-pointer"
 		>
 			<div className="flex flex-col items-start">

@@ -11,6 +11,8 @@ import {
 import { TranscriptContent } from "@/shared/models";
 import { useEffect } from "react";
 import { StatusBar } from "./StatusBar";
+import { useSearchParams } from "react-router-dom";
+import { convertIdToLanguage } from "../home/SettingsDialog";
 
 interface Props {
 	data: QueryTranscriptByIdData;
@@ -28,7 +30,7 @@ function stopSpeechToTextService() {
 
 export const Editor = (props: Props) => {
 	const { state, ...handlers } = useEditor(props.data);
-	// console.log("[ Editor ] editor state: ", state);
+	const [params] = useSearchParams();
 
 	useEffect(() => {
 		startSpeechToTextService();
@@ -100,7 +102,12 @@ export const Editor = (props: Props) => {
 					onEditorModeChange={handlers.onModeChange}
 				/>
 				<div>
-					<StatusBar editorMode={state.mode} />
+					{params.get("languageId") && (
+						<StatusBar
+							editorMode={state.mode}
+							language={convertIdToLanguage(Number(params.get("languageId")))}
+						/>
+					)}
 				</div>
 			</div>
 		</div>

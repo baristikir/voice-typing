@@ -375,8 +375,8 @@ std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::TranscribeFileInpu
   if (ret != 0) {
     fprintf(stderr, "Failed to process audio, returned %d\n", ret);
     return segments;
-  }
-
+  }   
+  
   const int n_segments = whisper_full_n_segments(ctx);
   for (int i = 0; i < n_segments; ++i) {
     transcribed_segment segment;

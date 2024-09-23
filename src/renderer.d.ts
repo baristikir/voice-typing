@@ -20,7 +20,7 @@ export interface ElectronAPI {
   stop: () => Promise<void>;
   reconfigure: (
     data: { mLanguageId: number },
-  ) => Promise<number>;
+  ) => Promise<UserPreferences>;
   addAudioData: (data: Float32Array) => Promise<void>;
   clearAudioData: () => Promise<void>;
   getTranscribedText: () => Promise<TranscribedSegments>;
