@@ -2,11 +2,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { PencilSimple, X } from "@phosphor-icons/react";
+import {
+	ArrowArcLeft,
+	ArrowFatLeft,
+	ArrowLeft,
+	CaretLeft,
+	PencilSimple,
+	X,
+} from "@phosphor-icons/react";
 import { EditorSetTitleAction } from "./useEditor";
 import { Button } from "../ui/Button";
 import { TranscriptTitle } from "./TranscriptTitle";
-import { Trash } from "@phosphor-icons/react/dist/ssr";
+import { ArrowSquareDownLeft, Trash } from "@phosphor-icons/react/dist/ssr";
 import { api } from "@/utils/rendererElectronAPI";
 
 interface Props {
@@ -32,6 +39,22 @@ export const EditorHeader = (props: Props) => {
 		<div className="flex items-center justify-between w-full">
 			<TranscriptTitle title={props.title} />
 			<div className="flex gap-2 items-center">
+				<Link to={"/"}>
+					<Button size="sm" variant="default">
+						<ArrowFatLeft weight="duotone" className="w-4 h-4 m-1" />
+						Zurück
+					</Button>
+				</Link>
+				<EditTranscriptDialog
+					isOpen={isEditDialogOpen}
+					setIsOpen={setIsEditDialogOpen}
+					title={props.title}
+					onSubmit={handleUpdateTranscript}
+				/>
+				<Button size="sm" variant="default" onClick={() => setIsEditDialogOpen(true)}>
+					<PencilSimple weight="duotone" className="w-4 h-4 mr-1" />
+					Titel bearbeiten
+				</Button>
 				<DeleteTranscriptDialog
 					isOpen={isDeleteDialogOpen}
 					setIsOpen={setIsDeleteDialogOpen}
@@ -41,21 +64,6 @@ export const EditorHeader = (props: Props) => {
 					<Trash weight="fill" className="w-4 h-4 mr-1" />
 					Transkript Löschen
 				</Button>
-				<EditTranscriptDialog
-					isOpen={isEditDialogOpen}
-					setIsOpen={setIsEditDialogOpen}
-					title={props.title}
-					onSubmit={handleUpdateTranscript}
-				/>
-				<Button size="sm" variant="default" onClick={() => setIsEditDialogOpen(true)}>
-					<PencilSimple weight="fill" className="w-4 h-4 mr-1" />
-					Titel bearbeiten
-				</Button>
-				<Link to={"/"}>
-					<Button size="sm" variant="default">
-						Beenden
-					</Button>
-				</Link>
 			</div>
 		</div>
 	);

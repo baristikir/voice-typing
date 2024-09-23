@@ -79,8 +79,6 @@ export const EditorControls = (props: Props) => {
 						Transkript Speichern
 					</Button>
 				</div>
-
-				<StatusBar editorMode={props.currentMode} />
 			</div>
 			{isSearchActive ? (
 				<div className="flex items-center gap-8">

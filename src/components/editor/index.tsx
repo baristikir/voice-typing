@@ -10,6 +10,7 @@ import {
 } from "./useEditor";
 import { TranscriptContent } from "@/shared/models";
 import { useEffect } from "react";
+import { StatusBar } from "./StatusBar";
 
 interface Props {
 	data: QueryTranscriptByIdData;
@@ -88,15 +89,20 @@ export const Editor = (props: Props) => {
 	return (
 		<div className="flex flex-col gap-6 w-full h-full">
 			<EditorHeader id={state.id} title={state.title} onTitleChange={handleUpdateTranscript} />
-			<RecordingTranscriptions
-				editorMode={state.mode}
-				contents={state.contents as TranscriptContent[]}
-				onAddContent={handleAddContent}
-				onUpdateContent={handleUpdateContent}
-				onRemoveContent={handleRemoveContent}
-				onSaveContents={handleSaveContents}
-				onEditorModeChange={handlers.onModeChange}
-			/>
+			<div className="flex flex-col gap-2">
+				<RecordingTranscriptions
+					editorMode={state.mode}
+					contents={state.contents as TranscriptContent[]}
+					onAddContent={handleAddContent}
+					onUpdateContent={handleUpdateContent}
+					onRemoveContent={handleRemoveContent}
+					onSaveContents={handleSaveContents}
+					onEditorModeChange={handlers.onModeChange}
+				/>
+				<div>
+					<StatusBar editorMode={state.mode} />
+				</div>
+			</div>
 		</div>
 	);
 };

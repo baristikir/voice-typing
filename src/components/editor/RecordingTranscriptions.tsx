@@ -598,7 +598,7 @@ export const RecordingTranscriptions = (props: Props) => {
 					Print Cursor State
 				</Button>
 			</div>
-			<div className="min-h-screen rounded-xl p-2">
+			<div className="rounded-xl p-2">
 				<EditorControls
 					currentMode={props.editorMode}
 					onEditorModeChange={props.onEditorModeChange}
