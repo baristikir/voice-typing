@@ -121,3 +121,61 @@ jobs:
         with:
           name: forge-logs-linux-${{ matrix.arch }}-${{ github.run_id }}
           path: out/forge.log
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Yarn and Node-GYP
+        run: |
+          npm install -g yarn
+          npm install -g node-gyp
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Display Yarn and Node.js versions
+        run: |
+          node --version
+          yarn --version
+
+      - name: List installed packages
+        run: yarn list --depth=0
+
+      - name: Downlaod GGML models
+        run: |
+          ./whisper.cpp/models/download-ggml-model.sh base
+          ./whisper.cpp/models/download-ggml-model.sh base.en
+
+      - name: Build Electron Application
+        env:
+          ELECTRON_ARCH: ${{ matrix.arch }}
+        run: yarn make --arch=${{ matrix.arch }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app-${{ matrix.arch }}-${{ github.run_id }}
+          path: |
+            out/make/**/*.dmg
+            out/make/**/*.pkg
+            out/make/**/*.zip
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-logs-macos-${{ matrix.arch }}-${{ github.run_id }}
+          path: out/forge.log
