@@ -3,50 +3,6 @@
 This is a simple voice typing application that uses the Whisper model to convert
 speech to text. The application is built using Electron.
 
-# TO-DOs
-
-- Editor:
-- [x] Insert text (transcripts) programmatically
-- [x] Different editor states to derive content editable state
-  - [x] Dictate Mode
-  - [x] Edit Mode
-  - [x] Selection Mode
-- [x] Make content editable
-- [x] Get selection in editor
-- [x] Paste into selection programmatically
-  - [ ] Scroll down to latest insertion (Dictation Mode)
-- [ ] Put cursor position after insertion
-- [x] Formatting Elements
-  - [x] Text
-  - [x] Headline
-  - [x] Empty Paragraphs
-- [x] Search for texts inside editor
-- [x] Replace previous searched instance with words
-- [x] Copy content to clipboard
-- [ ] Export content as PDF
-- [x] Autosave text contents to DB
-- Dictation:
-- [x] Capture audio input from microphone
-- [x] Transcribe audio segments and return to JS thread
-- [ ] Pause / Resume transcription
-  - [x] Clear whisper state
-- [ ] Controls
-  - [ ] Push to talk -> Configurable keyboard shortcuts
-  - [ ] Toggle to talk
-- Voice Commands:
-- [ ] Convert formatting elements into voice commands
-- [ ] Convert search into voice command
-- [ ] Convert replace into voice command
-- Database:
-- [x] Setup SQLite DB
-- [x] Create tables
-- [x] Add IPC handlers
-- Settings:
-- [x] Language Selection (German/English)
-- [ ] Configurable dictation (toggle or push-to-talk)
-- [ ] Customizable keyboard shortcuts
-  - [ ] Dictationmode Shortcut (either for toggling or push-to-talk)
-
 ## Requirements
 
 - [Node.js](https://nodejs.org/en/download/package-manager) > 22.0.0
