@@ -48,7 +48,8 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS user_preferences (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         speech_recognition_language_id INTEGER DEFAULT 0,
-        push_to_talk_enabled BOOLEAN DEFAULT FALSE
+        push_to_talk_enabled BOOLEAN DEFAULT FALSE,
+        device_id TEXT
       )
     `);
 
@@ -94,7 +95,7 @@ interface IUserPreferencesDbService {
 export const UserPreferencesDbService: IUserPreferencesDbService = {
   getUserPreferences() {
     const stmt = db.prepare(`
-          SELECT speech_recognition_language_id, push_to_talk_enabled
+          SELECT speech_recognition_language_id, push_to_talk_enabled, device_id
           FROM user_preferences
           WHERE id = 1 
         `);
@@ -103,13 +104,15 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
     return {
       speechRecognitionLanguageId: row.speech_recognition_language_id,
       pushToTalkEnabled: Boolean(row.push_to_talk_enabled),
+      deviceId: row.device_id,
     };
   },
   updateUserPreferences(preferences) {
     const updateStmt = db.prepare(`
           UPDATE user_preferences
           SET speech_recognition_language_id = COALESCE(?, speech_recognition_language_id),
-              push_to_talk_enabled = COALESCE(?, push_to_talk_enabled)
+              push_to_talk_enabled = COALESCE(?, push_to_talk_enabled),
+              device_id = COALESCE(?, device_id)
           WHERE id = 1            
         `);
 
@@ -117,6 +120,7 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
       updateStmt.run(
         preferences.speechRecognitionLanguageId,
         preferences.pushToTalkEnabled,
+        preferences.deviceId,
       );
     })();
 

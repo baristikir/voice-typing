@@ -25,6 +25,9 @@ export function registerPreferencesIPCHandler() {
     if ("pushToTalkEnabled" in data) {
       assert.strictEqual(typeof data.pushToTalkEnabled === "boolean", true);
     }
+    if ("deviceId" in data) {
+      assert.strictEqual(typeof data.deviceId === "string", true);
+    }
 
     const updatedPreferences = UserPreferencesDbService.updateUserPreferences(
       data,

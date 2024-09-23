@@ -1,6 +1,7 @@
 export interface UserPreferences {
   speechRecognitionLanguageId: number;
   pushToTalkEnabled: boolean;
+  deviceId?: string;
 }
 
 export interface Transcript {

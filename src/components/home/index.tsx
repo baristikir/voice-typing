@@ -7,7 +7,9 @@ import { api, QueryTranscriptsData, QueryUserPreferencesData } from "@/utils/ren
 import { SettingsDialog } from "./SettingsDialog";
 import { CreateNewTranscriptDialog } from "./CreateTranscriptDialog";
 import { LoadingSectionspinner } from "../ui/LoadingSpinner";
-import { TranscribedSegmentPayload } from "@/shared/ipcPayloads";
+import { useSetAtom } from "jotai";
+import { handleUpdateAudioDeviceAtom } from "@/state/audioAtoms";
+import { UserPreferences } from "@/shared/models";
 
 function useDbTranscripts() {
 	const [data, setData] = useState<QueryTranscriptsData>();
@@ -47,20 +49,36 @@ function useDbUserPreferences() {
 		queryUserPreferences();
 	};
 
+	const update = (data: UserPreferences) => {
+		setData(data);
+	};
+
 	return {
 		data,
 		isLoading,
 		refetch,
+		update,
 	};
 }
 
 interface Props {}
 export function HomeContent(_: Props) {
 	const { data: transcriptsData } = useDbTranscripts();
-	const { data: preferencesData, isLoading } = useDbUserPreferences();
+	const {
+		data: preferencesData,
+		isLoading,
+		update: updatePreferencesData,
+	} = useDbUserPreferences();
+	const navigate = useNavigate();
+	const setDeviceId = useSetAtom(handleUpdateAudioDeviceAtom);
 	const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
 	const [isImportingFile, setIsImportingFile] = useState(false);
-	const navigate = useNavigate();
+
+	useEffect(() => {
+		if (preferencesData) {
+			setDeviceId(preferencesData.deviceId);
+		}
+	}, [preferencesData]);
 
 	const handleOpenSettingsDialog = () => setIsSettingsDialogOpen(true);
 	const handleImportFileDialog = async () => {
@@ -117,6 +135,7 @@ export function HomeContent(_: Props) {
 								defaultValues={preferencesData}
 								isOpen={isSettingsDialogOpen}
 								setIsOpen={setIsSettingsDialogOpen}
+								optimisticUpdater={updatePreferencesData}
 							/>
 						)}
 						<Button size="sm" variant="default" onClick={handleImportFileDialog}>
@@ -130,7 +149,7 @@ export function HomeContent(_: Props) {
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-4xl">
+				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-full">
 					<CreateNewDictation />
 					{transcriptsData?.map((item) => {
 						return (
@@ -192,7 +211,7 @@ const DictationCard = (props: DictationCardProps) => {
 	return (
 		<Link
 			to={`/transcripts/${String(props.id)}`}
-			className="h-64 col-span-1 flex flex-col items-start justify-between border rounded-2xl bg-white px-4 pt-6 pb-4 gap-2 shadow-sm hover:bg-gray-100 cursor-pointer"
+			className="h-64 col-span-1 flex flex-col items-start justify-between border rounded-2xl bg-white px-4 pt-6 pb-4 gap-2 drop-shadow-sm hover:bg-gray-100 cursor-pointer"
 		>
 			<div className="flex flex-col items-start">
 				<h3 className="text-2xl font-semibold">{props.title}</h3>

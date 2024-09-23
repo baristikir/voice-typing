@@ -13,7 +13,7 @@ export interface ElectronAPI {
   // User Preferences
   getUserPreferences: () => Promise<UserPreferences>;
   updateUserPreferences: (
-    preferences: UserPreferences,
+    preferences: Partial<UserPreferences>,
   ) => Promise<UserPreferences>;
   // Whisper Model
   start: () => Promise<void>;
