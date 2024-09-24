@@ -7,6 +7,7 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { MakerDeb } from "@electron-forge/maker-deb";
 import { MakerDMG } from "@electron-forge/maker-dmg";
 import { VitePlugin } from "@electron-forge/plugin-vite";
+import { PublisherGithub } from "@electron-forge/publisher-github";
 import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
 import path from "path";
 import fs from "fs";
@@ -75,6 +76,16 @@ const config: ForgeConfig = {
           config: "vite.renderer.config.ts",
         },
       ],
+    }),
+  ],
+  publishers: [
+    new PublisherGithub({
+      repository: {
+        owner: "baristikir",
+        name: "voice-typing",
+      },
+      draft: false,
+      prerelease: false,
     }),
   ],
   hooks: {
