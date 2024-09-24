@@ -1,7 +1,11 @@
 import { dialog, systemPreferences } from "electron";
 
 export function checkMicrophonePermission() {
-  return systemPreferences.getMediaAccessStatus("microphone");
+  if (process.platform === "darwin" || process.platform === "win32") {
+    return systemPreferences.getMediaAccessStatus("microphone");
+  } else {
+    return true;
+  }
 }
 
 export async function requestMicrophonePermission() {

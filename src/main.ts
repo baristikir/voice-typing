@@ -2,10 +2,7 @@ import { app, BrowserWindow, dialog } from "electron";
 import assert from "node:assert";
 import path from "node:path";
 import { registerWhisperIPCHandler } from "./ipc/whisperIPCHandlers";
-import {
-  getWhisperModelConfiguration,
-  getWhisperModelPath,
-} from "./utils/whisperModel";
+import { getWhisperModelConfiguration } from "./utils/whisperModel";
 import {
   closeDatabase,
   setupDatabase,
