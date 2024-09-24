@@ -156,10 +156,12 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Display Yarn and Node.js versions
+      - name: Display Yarn, Node.js and Python versions
         run: |
           node --version
           yarn --version
+          python --version
+          pip list
 
       - name: List installed packages
         run: yarn list --depth=0
