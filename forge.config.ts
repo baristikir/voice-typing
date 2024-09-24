@@ -17,6 +17,7 @@ const config: ForgeConfig = {
     asar: true,
     appVersion: "0.0.1",
     appCategoryType: "public.app-category.productivity",
+    icon: "./images/icon.png",
     executableName: "voice-typing",
     extendInfo: "./resources/Info.plist",
     extraResource: [
@@ -84,17 +85,16 @@ const config: ForgeConfig = {
         owner: "baristikir",
         name: "voice-typing",
       },
-      draft: false,
-      prerelease: false,
+      draft: true,
     }),
   ],
   hooks: {
     packageAfterCopy: async (
-      config,
+      _config,
       buildPath,
-      electronVersion,
-      platform,
-      arch,
+      _electronVersion,
+      _platform,
+      _arch,
     ) => {
       const nativeAddonPath = path.resolve(
         __dirname,
