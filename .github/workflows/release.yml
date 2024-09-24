@@ -24,10 +24,6 @@ jobs:
         uses: release-drafter/release-drafter@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        template: |
-          ## What's Changed
-
-          $CHANGES
 
       - name: Create Release
         id: create_release
