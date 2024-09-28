@@ -93,7 +93,7 @@ jobs:
       - name: Build Native Addons for ARM64
         if: matrix.arch == 'ARM64'
         run: |
-          node-gyp configure --target=arm64
+          node-gyp configure --arch=arm64
           node-gyp build
 
       - name: Display Yarn and Node.js versions
