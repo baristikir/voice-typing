@@ -586,7 +586,7 @@ export const RecordingTranscriptions = (props: Props) => {
 
 			if (isParagraphElement && hasChildNodes) {
 				const textElements = child.childNodes;
-				if (child.parentElement.nodeName !== "DIV") {
+				if (n_iter > 0) {
 					contents.push({
 						id: cuid(),
 						content: "",
