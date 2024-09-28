@@ -138,9 +138,21 @@ export const RecordingTranscriptions = (props: Props) => {
 
 	const getFirstSelectionRange = (): Range | null => {
 		const selection = window.getSelection();
+		if (!selection.rangeCount) {
+			return null;
+		}
+
 		try {
 			const range = selection.getRangeAt(0);
-			return range;
+			let node = range.commonAncestorContainer;
+			while (node) {
+				if (node === textContainerRef.current) {
+					return range;
+				}
+				node = node.parentNode;
+			}
+
+			return null;
 		} catch (error) {
 			return null;
 		}
@@ -153,7 +165,8 @@ export const RecordingTranscriptions = (props: Props) => {
 		const range = getFirstSelectionRange();
 
 		if (range) {
-			insertLineBreakAfterSelection();
+			console.log("has range");
+			insertLineBreakAfterSelection(range);
 			return;
 		}
 
@@ -161,28 +174,15 @@ export const RecordingTranscriptions = (props: Props) => {
 		textContainer.appendChild(newParagraph);
 	};
 
-	const insertLineBreakAfterSelection = () => {
+	const insertLineBreakAfterSelection = (range: Range) => {
 		const textContainer = textContainerRef.current;
-		const selection = window.getSelection();
-		if (!textContainer || !selection) return;
+		if (!textContainer) return;
 
-		const range = selection.getRangeAt(0);
 		const newParagraph = createParagraph();
 
-		const findNearestSpan = (node: Node): HTMLSpanElement | null => {
+		const findNearestParagraph = (node: Node): HTMLParagraphElement | null => {
 			while (node && node !== textContainer) {
-				if (node.nodeName === "SPAN") {
-					return node as HTMLSpanElement;
-				}
-
-				node = node.parentNode;
-			}
-			return null;
-		};
-
-		const findCurrentSpan = (node: Node) => {
-			while (node && node !== textContainer) {
-				if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).nodeName === "P") {
+				if (node.nodeName === "P") {
 					return node as HTMLParagraphElement;
 				}
 				node = node.parentNode;
@@ -190,37 +190,55 @@ export const RecordingTranscriptions = (props: Props) => {
 			return null;
 		};
 
-		const nearestSpan = findNearestSpan(range.startContainer);
-		const currentParagraph = findCurrentSpan(range.startContainer);
+		const currentParagraph = findNearestParagraph(range.startContainer);
 		if (!currentParagraph) {
-			console.log("No closest paragraph was found.");
+			console.log("[ insertLineBreakAfterSelection ] No closest paragraph node was found.");
+			textContainer.appendChild(newParagraph);
 			return;
+		}
+
+		const { startOffset, startContainer } = range;
+		if (startOffset === 0 && startContainer === currentParagraph.firstChild) {
+			prependParagraph(currentParagraph, newParagraph);
+			return;
+		}
+
+		if (
+			startOffset ===
+			(startContainer?.nodeType === Node.TEXT_NODE
+				? (startContainer as Text).length
+				: startContainer.childNodes.length)
+		) {
+			if (
+				!startContainer.parentNode.nextSibling ||
+				startContainer.parentNode.nextSibling.nodeName !== "SPAN"
+			) {
+				appendParagraph(currentParagraph, newParagraph);
+				return;
+			}
 		}
 
 		let currentSpan =
-			range.startContainer.nodeType === Node.TEXT_NODE
-				? range.startContainer.parentElement
-				: (range.startContainer as HTMLElement);
+			startContainer.nodeType === Node.TEXT_NODE
+				? startContainer.parentElement
+				: (startContainer as HTMLElement);
+
 		if (currentSpan.nodeName !== "SPAN") {
-			console.log("Selection not in a span element.");
+			console.log("Selection not in a span element");
 			return;
 		}
-		console.log("c_span: ", currentSpan);
 
-		// Split the current span's text
 		const spanText = currentSpan.textContent;
-		const splitIndex = range.startOffset;
+		const splitIndex = startOffset;
 		const firstHalf = spanText.slice(0, splitIndex);
 		const secondHalf = spanText.slice(splitIndex);
 
-		// Update the current span with the first half of the text
 		currentSpan.textContent = firstHalf;
-		const isAtEndOfSpan = range.startOffset === currentSpan.textContent.length;
 
-		console.log("text contents: ", { firstHalf, secondHalf, isAtEndOfSpan });
-		// const newParagraph = createParagraph();
-		const newSpanTextContent = isAtEndOfSpan ? "\u200B" : secondHalf;
-		const newSpan = createSpanText(newSpanTextContent, { id: cuid(), partial: "false" });
+		const newSpan = createSpanText(secondHalf, {
+			id: cuid(),
+			partial: String(false),
+		});
 		newParagraph.appendChild(newSpan);
 
 		let nextSpan = currentSpan.nextElementSibling;
@@ -230,18 +248,33 @@ export const RecordingTranscriptions = (props: Props) => {
 			newParagraph.appendChild(spanToMove);
 		}
 
-		currentParagraph.after(br, newParagraph);
+		currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
 
-		const newRange = document.createRange();
-		if (isAtEndOfSpan) {
-			// Set cursor position to empty new created span element
-			newRange.setStart(newSpan.firstChild, 1);
-			newRange.setEnd(newSpan.firstChild, 1);
+		resetSelectionToStart(newSpan.firstChild);
+	};
+
+	const prependParagraph = (cParagraph: Node, nParagraph: Node) => {
+		cParagraph.parentNode.insertBefore(nParagraph, cParagraph);
+		resetSelectionToStart(nParagraph);
+	};
+
+	const appendParagraph = (cParagraph: Node, nParagraph: Node) => {
+		const nextSibling = cParagraph.nextSibling;
+		if (nextSibling) {
+			cParagraph.parentNode.insertBefore(nParagraph, nextSibling);
 		} else {
-			newRange.setStart(newSpan.firstChild, 0);
-			newRange.setEnd(newSpan.firstChild, 0);
+			cParagraph.parentNode.appendChild(nParagraph);
 		}
-		// Set the cursor position after the <br>
+
+		resetSelectionToStart(nParagraph);
+	};
+
+	const resetSelectionToStart = (node: Node) => {
+		const newRange = document.createRange();
+		newRange.setStart(node, 0);
+		newRange.collapse(true);
+
+		const selection = window.getSelection();
 		selection.removeAllRanges();
 		selection.addRange(newRange);
 	};
@@ -442,7 +475,7 @@ export const RecordingTranscriptions = (props: Props) => {
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Enter") {
 			event.preventDefault();
-			insertLineBreakAfterSelection();
+			insertLineBreak();
 		}
 	};
 
