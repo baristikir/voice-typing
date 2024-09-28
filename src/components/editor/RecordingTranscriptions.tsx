@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import { api } from "@/utils/rendererElectronAPI";
 import {
+	copyTextContentsToClipboard,
 	createHeadline1,
 	createNewParagraph,
 	createParagraph,
@@ -590,20 +591,15 @@ export const RecordingTranscriptions = (props: Props) => {
 		Array.from(textContainer.childNodes).forEach(removeHighlightFromNode);
 	};
 
+	const handleExportContents = () => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+		copyTextContentsToClipboard(textContainer);
+	};
+
 	return (
 		<>
-			<div>
-				<Button
-					size="sm"
-					variant="outline"
-					onClick={() => {
-						const cursorPosition = getCursorPosition(textContainerRef.current);
-						console.log(cursorPosition);
-					}}
-				>
-					Print Cursor State
-				</Button>
-			</div>
+			<div></div>
 			<div className="rounded-xl p-2">
 				<EditorControls
 					currentMode={props.editorMode}
@@ -613,6 +609,7 @@ export const RecordingTranscriptions = (props: Props) => {
 					onReplaceResults={handleReplace}
 					handleInsertLineBreak={insertLineBreak}
 					handleResetHighlightedNodes={handleResetHighlightedNodes}
+					handleExportContents={handleExportContents}
 				/>
 
 				<div className="flex flex-col gap-2 bg-white h-full p-2 border-x border-b border-gray-200 min-h-[50vh] rounded-b-2xl drop-shadow-sm">

@@ -93,26 +93,27 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 	const textContainerChildren = textContainer.children;
 	const texts: string[] = [];
 
-	Array.from(textContainerChildren).forEach((child, index) => {
-		const { tagName, textContent } = child;
-		const prevChild = textContainerChildren[index - 1];
+	Array.from(textContainerChildren).forEach((child, i) => {
+		const { tagName, textContent, childNodes } = child;
+		const prevChild = textContainerChildren[i - 1];
 
 		if (tagName === "H1") {
 			texts.push(textContent);
 			return;
 		}
 
-		if (tagName === "BR") {
-			texts.push(" ");
-			return;
-		}
-
 		if (tagName === "P") {
-			if (!prevChild || prevChild.tagName !== "P") {
-				texts.push(textContent);
-			} else {
-				texts[texts.length - 1] += textContent;
+			if (i !== 0) {
+				texts.push(" ");
 			}
+
+			childNodes.forEach((spanChild, j) => {
+				if (j === 0 || !childNodes[j - 1]) {
+					texts.push(spanChild.textContent);
+				} else {
+					texts[texts.length - 1] += spanChild.textContent;
+				}
+			});
 		}
 	});
 

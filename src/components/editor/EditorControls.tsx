@@ -6,9 +6,16 @@
 */
 import { ChangeEvent, memo, useEffect, useState } from "react";
 import { Button } from "../ui/Button";
-import { ArticleNyTimes, FloppyDisk, MagnifyingGlass, Paragraph } from "@phosphor-icons/react";
+import {
+	ArticleNyTimes,
+	Clipboard,
+	FloppyDisk,
+	MagnifyingGlass,
+	Paragraph,
+} from "@phosphor-icons/react";
 import { EditorMode } from "./useEditor";
 import { AudioRecordingControl } from "./AudioRecordingControl";
+import { copyTextContentsToClipboard } from "./EditorElements";
 
 interface Props {
 	currentMode: EditorMode;
@@ -18,6 +25,7 @@ interface Props {
 	onReplaceResults(replaceText: string, searchText: string, replaceAll?: boolean): void;
 	handleResetHighlightedNodes(): void;
 	handleInsertLineBreak(): void;
+	handleExportContents(): void;
 }
 export const EditorControls = (props: Props) => {
 	const [isSearchActive, setIsSearchActive] = useState(false);
@@ -56,10 +64,6 @@ export const EditorControls = (props: Props) => {
 						<Paragraph className="w-4 h-4 mr-1" weight="regular" />
 						Absatz einfügen
 					</Button>
-					<Button variant="outline" size="sm" disabled={props.currentMode === EditorMode.DICTATING}>
-						<ArticleNyTimes className="w-4 h-4 mr-1" weight="regular" />
-						Überschrift einfügen
-					</Button>
 					<Button
 						variant={isSearchActive ? "default" : "outline"}
 						size="sm"
@@ -77,6 +81,15 @@ export const EditorControls = (props: Props) => {
 					>
 						<FloppyDisk className="w-4 h-4 mr-1" weight="regular" />
 						Transkript Speichern
+					</Button>
+					<Button
+						size="sm"
+						variant="outline"
+						disabled={props.currentMode === EditorMode.DICTATING}
+						onClick={props.handleExportContents}
+					>
+						<Clipboard className="mr-1 w-4 h-4" weight="regular" />
+						In Zwischenablage exportieren
 					</Button>
 				</div>
 			</div>
