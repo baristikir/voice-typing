@@ -205,7 +205,7 @@ std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::GetTranscribedText
 void RealtimeSpeechToTextWhisper::Process()
 {
   struct whisper_full_params wparams = whisper_full_default_params(whisper_sampling_strategy::WHISPER_SAMPLING_GREEDY);
-  wparams.n_threads = 8;
+  wparams.n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
   wparams.no_context = true;
   wparams.single_segment = true;
   wparams.print_progress = false;
