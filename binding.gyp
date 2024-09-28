@@ -32,8 +32,24 @@
                                     "/std:c++17",
                                     "/D_USE_MATH_DEFINES",
                                     "/D_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING",
-                                    "/DNOMINMAX"
-                                ]
+                                    "/DNOMINMAX",
+                                    "/O2",
+                                    "/GL",
+                                    "/Gy",
+                                    "/Ob2",
+                                    "/arch:AVX2",
+                                    "/fp:fast",
+                                    "/Qpar",
+                                    "/MD"
+                                ],
+                                "Optimization": 2,
+                                "EnableFiberSafeOptimizations": "true",
+                                "WholeProgramOptimization": "true" 
+                            },
+                            "VCLinkerTool": {
+                                "LinkTimeCodeGeneration": 1,
+                                "OptimizeReferences": 2,
+                                "EnableCOMDATFolding": 2
                             }
                         }
                     },
@@ -45,11 +61,72 @@
                             "CLANG_CXX_LIBRARY": "libc++",
                             "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
                             "MACOSX_DEPLOYMENT_TARGET": "14.5",
-                            "OTHER_CFLAGS": ["-DGGML_USE_ACCELERATE"],
+                            "OTHER_CFLAGS": [
+                                "-DGGML_USE_ACCELERATE",
+                                "-O3",
+                                "-march=native",
+                                "-mtune=native",
+                                "-ffast-math",
+                                "-fno-finite-math-only",
+                                "-fno-rtti",
+                                "-DNDEBUG"
+                            ],
                             "OTHER_LDFLAGS": ["-framework Accelerate"],
                         }
                     },
                 ],
+                [
+                    'OS=="linux"',
+                    {
+                        "cflags": [
+                            "-O3",
+                            "-ffast-math",
+                            "-funsafe-math-optimizations",
+                            "-fno-rtti",
+                            "-fno-exceptions",
+                            "-fPIC",
+                            "-fopenmp",
+                            "-DNDEBUG",
+                            "-D_GNU_SOURCE",
+                            "-D_XOPEN_SOURCE=600",
+                            "-Wall",
+                            "-Wextra",
+                            "-Wpedantic"
+                        ],
+                        "cflags_cc": [
+                            "-std=c++17",
+                            "-O3",
+                            "-ffast-math",
+                            "-funsafe-math-optimizations",
+                            "-fno-rtti",
+                            "-fno-exceptions",
+                            "-fPIC",
+                            "-fopenmp",
+                            "-DNDEBUG",
+                            "-D_GNU_SOURCE",
+                            "-D_XOPEN_SOURCE=600",
+                            "-Wall",
+                            "-Wextra",
+                            "-Wpedantic"
+                        ],
+                        "ldflags": [
+                            "-flto",
+                            "-fopenmp"
+                        ],
+                        "libraries": [
+                            "-lgomp"
+                        ],
+                        "conditions": [
+                            [
+                                'target_arch=="arm64"',
+                                {
+                                    "cflags": ["-mcpu=native"],
+                                    "cflags_cc": ["-mcpu=native"]
+                                }
+                            ]
+                        ]
+                    }
+                ]
             ],
         }
     ]

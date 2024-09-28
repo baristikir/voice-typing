@@ -82,8 +82,19 @@ jobs:
           npm install -g yarn
           npm install -g node-gyp
 
-      - name: Install dependencies
+      - name: Install dependencies without Native Addon Builds (ARM64)
+        if: matrix.arch == 'ARM64'
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Install dependencies with Native Addons Builds (X64)
+        if: matrix.arch == 'X64'
         run: yarn install --frozen-lockfile
+
+      - name: Build Native Addons for ARM64
+        if: matrix.arch == 'ARM64'
+        run: |
+          node-gyp configure --target=arm64
+          node-gyp build
 
       - name: Display Yarn and Node.js versions
         run: |
