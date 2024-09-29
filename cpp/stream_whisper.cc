@@ -265,6 +265,7 @@ void RealtimeSpeechToTextWhisper::Process()
       std::lock_guard<std::mutex> lock(s_mutex);    
       if (is_clear_audio) {
         pcmf32.clear();
+        s_transcribed_segments.clear();
         is_clear_audio = false;
       }
     }
