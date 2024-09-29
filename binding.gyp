@@ -81,6 +81,7 @@
                         "cflags": [
                             "-O3",
                             "-ffast-math",
+                            "-fno-finite-math-only",
                             "-funsafe-math-optimizations",
                             "-fno-rtti",
                             "-fno-exceptions",
@@ -97,6 +98,7 @@
                             "-std=c++17",
                             "-O3",
                             "-ffast-math",
+                            "-fno-finite-math-only",
                             "-funsafe-math-optimizations",
                             "-fno-rtti",
                             "-fno-exceptions",

@@ -6,7 +6,6 @@ import {
 	createNewParagraph,
 	createParagraph,
 	createSpanText,
-	getCurrentCursorState,
 	highlightNode,
 	removeHighlightFromNode,
 	replaceInNode,
@@ -20,10 +19,9 @@ import {
 	EditorState,
 	EditorUpdateContentAction,
 } from "./useEditor";
-import { Simulation, TestSimulationControls } from "./TranscriptionSimulator";
+import { Simulation } from "./TranscriptionSimulator";
 import { EditorControls } from "./EditorControls";
 import cuid from "cuid";
-import { Button } from "../ui/Button";
 
 const IS_SIMULATION_MODE = false;
 const TRANSCRIPTION_RATE_IN_MS = 300;
@@ -38,15 +36,6 @@ export type RecorderProcessorMessageData = {
 	sampleRate: number;
 	currentFrame: number;
 };
-enum ElementUpdateKind {
-	Insertion,
-	CharacterUpdate,
-	Deletion,
-}
-type EditorElementUpdate = Omit<TranscriptContent, "order"> & {
-	id: string | null;
-	kind: ElementUpdateKind;
-};
 
 interface Props {
 	editorMode: EditorMode;
@@ -59,6 +48,7 @@ interface Props {
 }
 export const RecordingTranscriptions = (props: Props) => {
 	const textContainerRef = useRef<HTMLDivElement>(null);
+	const lastEditedElementRef = useRef<HTMLSpanElement>(null);
 
 	// Sync with db contents on startup
 	useEffect(() => {
@@ -98,19 +88,18 @@ export const RecordingTranscriptions = (props: Props) => {
 	// Register Selection Listeners
 	useEffect(() => {
 		const checkSelection = (_: Event) => {
-			const selection = window.getSelection();
-			const rangeCount = window.getSelection().rangeCount;
-			if (rangeCount < 0 || selection.isCollapsed) {
+			const { rangeCount, isCollapsed, getRangeAt } = window.getSelection();
+			if (rangeCount < 0 || isCollapsed) {
 				props.onEditorModeChange(EditorMode.EDITING);
 			}
 
-			const rangeAt = window.getSelection()?.getRangeAt(0);
+			const rangeAt = getRangeAt(0);
 			if (!rangeAt.collapsed && props.editorMode !== EditorMode.SELECTION) {
 				props.onEditorModeChange(EditorMode.SELECTION);
 			}
 		};
 
-		document.addEventListener("selectionchange", checkSelection);
+		// document.addEventListener("selectionchange", checkSelection);
 
 		return () => {
 			document.removeEventListener("selectionchange", checkSelection);
@@ -129,21 +118,36 @@ export const RecordingTranscriptions = (props: Props) => {
 		};
 	}, []);
 
-	const insertIntoSelection = (textContent: string) => {
-		const currentSelection = getCurrentCursorState();
-		if (!currentSelection) return;
-
-		currentSelection.insertTextContent(textContent);
-	};
-
 	const getFirstSelectionRange = (): Range | null => {
 		const selection = window.getSelection();
+		if (!selection.rangeCount) {
+			return null;
+		}
+
 		try {
 			const range = selection.getRangeAt(0);
-			return range;
+			let node = range.commonAncestorContainer;
+			while (node) {
+				if (node === textContainerRef.current) {
+					return range;
+				}
+				node = node.parentNode;
+			}
+
+			return null;
 		} catch (error) {
 			return null;
 		}
+	};
+
+	const findNearestParagraph = (node: Node): HTMLParagraphElement | null => {
+		while (node && node !== textContainerRef.current) {
+			if (node.nodeName === "P") {
+				return node as HTMLParagraphElement;
+			}
+			node = node.parentNode;
+		}
+		return null;
 	};
 
 	const insertLineBreak = () => {
@@ -153,7 +157,8 @@ export const RecordingTranscriptions = (props: Props) => {
 		const range = getFirstSelectionRange();
 
 		if (range) {
-			insertLineBreakAfterSelection();
+			console.log("has range");
+			insertLineBreakAfterSelection(range);
 			return;
 		}
 
@@ -161,66 +166,54 @@ export const RecordingTranscriptions = (props: Props) => {
 		textContainer.appendChild(newParagraph);
 	};
 
-	const insertLineBreakAfterSelection = () => {
+	const insertLineBreakAfterSelection = (range: Range) => {
 		const textContainer = textContainerRef.current;
-		const selection = window.getSelection();
-		if (!textContainer || !selection) return;
+		if (!textContainer) return;
 
-		const range = selection.getRangeAt(0);
 		const newParagraph = createParagraph();
 
-		const findNearestSpan = (node: Node): HTMLSpanElement | null => {
-			while (node && node !== textContainer) {
-				if (node.nodeName === "SPAN") {
-					return node as HTMLSpanElement;
-				}
-
-				node = node.parentNode;
-			}
-			return null;
-		};
-
-		const findCurrentSpan = (node: Node) => {
-			while (node && node !== textContainer) {
-				if (node.nodeType === Node.ELEMENT_NODE && (node as HTMLElement).nodeName === "P") {
-					return node as HTMLParagraphElement;
-				}
-				node = node.parentNode;
-			}
-			return null;
-		};
-
-		const nearestSpan = findNearestSpan(range.startContainer);
-		const currentParagraph = findCurrentSpan(range.startContainer);
+		const currentParagraph = findNearestParagraph(range.startContainer);
 		if (!currentParagraph) {
-			console.log("No closest paragraph was found.");
+			console.log("[ insertLineBreakAfterSelection ] No closest paragraph node was found.");
+			textContainer.appendChild(newParagraph);
 			return;
+		}
+
+		const { startOffset, startContainer } = range;
+		if (startOffset === 0 && startContainer === currentParagraph.firstChild) {
+			prependParagraph(currentParagraph, newParagraph);
+			return;
+		}
+
+		if (
+			startOffset ===
+			(startContainer?.nodeType === Node.TEXT_NODE ? (startContainer as Text).length : startContainer.childNodes.length)
+		) {
+			if (!startContainer.parentNode.nextSibling || startContainer.parentNode.nextSibling.nodeName !== "SPAN") {
+				appendParagraph(currentParagraph, newParagraph);
+				return;
+			}
 		}
 
 		let currentSpan =
-			range.startContainer.nodeType === Node.TEXT_NODE
-				? range.startContainer.parentElement
-				: (range.startContainer as HTMLElement);
+			startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentElement : (startContainer as HTMLElement);
+
 		if (currentSpan.nodeName !== "SPAN") {
-			console.log("Selection not in a span element.");
+			console.log("Selection not in a span element");
 			return;
 		}
-		console.log("c_span: ", currentSpan);
 
-		// Split the current span's text
 		const spanText = currentSpan.textContent;
-		const splitIndex = range.startOffset;
+		const splitIndex = startOffset;
 		const firstHalf = spanText.slice(0, splitIndex);
 		const secondHalf = spanText.slice(splitIndex);
 
-		// Update the current span with the first half of the text
 		currentSpan.textContent = firstHalf;
-		const isAtEndOfSpan = range.startOffset === currentSpan.textContent.length;
 
-		console.log("text contents: ", { firstHalf, secondHalf, isAtEndOfSpan });
-		// const newParagraph = createParagraph();
-		const newSpanTextContent = isAtEndOfSpan ? "\u200B" : secondHalf;
-		const newSpan = createSpanText(newSpanTextContent, { id: cuid(), partial: "false" });
+		const newSpan = createSpanText(secondHalf, {
+			id: cuid(),
+			partial: String(false),
+		});
 		newParagraph.appendChild(newSpan);
 
 		let nextSpan = currentSpan.nextElementSibling;
@@ -230,18 +223,33 @@ export const RecordingTranscriptions = (props: Props) => {
 			newParagraph.appendChild(spanToMove);
 		}
 
-		currentParagraph.after(br, newParagraph);
+		currentParagraph.parentNode.insertBefore(newParagraph, currentParagraph.nextSibling);
 
-		const newRange = document.createRange();
-		if (isAtEndOfSpan) {
-			// Set cursor position to empty new created span element
-			newRange.setStart(newSpan.firstChild, 1);
-			newRange.setEnd(newSpan.firstChild, 1);
+		resetSelectionToStart(newSpan.firstChild);
+	};
+
+	const prependParagraph = (cParagraph: Node, nParagraph: Node) => {
+		cParagraph.parentNode.insertBefore(nParagraph, cParagraph);
+		resetSelectionToStart(nParagraph);
+	};
+
+	const appendParagraph = (cParagraph: Node, nParagraph: Node) => {
+		const nextSibling = cParagraph.nextSibling;
+		if (nextSibling) {
+			cParagraph.parentNode.insertBefore(nParagraph, nextSibling);
 		} else {
-			newRange.setStart(newSpan.firstChild, 0);
-			newRange.setEnd(newSpan.firstChild, 0);
+			cParagraph.parentNode.appendChild(nParagraph);
 		}
-		// Set the cursor position after the <br>
+
+		resetSelectionToStart(nParagraph);
+	};
+
+	const resetSelectionToStart = (node: Node) => {
+		const newRange = document.createRange();
+		newRange.setStart(node, 0);
+		newRange.collapse(true);
+
+		const selection = window.getSelection();
 		selection.removeAllRanges();
 		selection.addRange(newRange);
 	};
@@ -290,80 +298,111 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
-	const insertTranscripts = (
-		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
-	) => {
+	const isSelectionInEditor = () => {
+		const selection = window.getSelection();
+		const textContainer = textContainerRef.current;
+		if (!selection || selection.rangeCount <= 0 || !textContainer) return false;
+
+		const range = selection.getRangeAt(0);
+		const startNode = range.startContainer;
+		const endNode = range.endContainer;
+		return textContainer.contains(startNode) && textContainer.contains(endNode);
+	};
+
+	const insertTranscripts = (newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
-		appendTranscripts(newTranscriptions);
-		return;
-
 		const selection = window.getSelection();
-		let insertionNode: Node | null = null;
-		let insertionOffset = 0;
+		if (!isSelectionInEditor()) {
+			appendTranscripts(newTranscriptions);
+			return;
+		}
 
-		// Determine the insertion point
-		if (selection && selection.rangeCount > 0) {
-			const range = selection.getRangeAt(0);
-			if (textContainer.contains(range.commonAncestorContainer)) {
-				insertionNode = range.startContainer;
-				insertionOffset = range.startOffset;
+		const { startContainer, startOffset } = selection.getRangeAt(0);
+		const currentParagraph = findNearestParagraph(startContainer);
+		if (!currentParagraph) {
+			console.log("No closest paragraph node was found.", currentParagraph, startContainer);
+			return;
+		}
+
+		for (let i = 0; i < newTranscriptions.segments.length; i++) {
+			const segment = newTranscriptions.segments[i];
+			const lastChild = lastEditedElementRef.current;
+			if (lastChild?.dataset?.partial === "true") {
+				console.log("last edited child is partial");
+				const currentSpan = lastChild as HTMLSpanElement;
+				currentSpan.textContent = segment.text;
+				if (!segment.isPartial) {
+					lastChild.dataset.partial = "false";
+				}
+				return;
 			}
-		}
 
-		// If no valid insertion point, append to the end
-		if (!insertionNode) {
-			insertionNode = textContainer;
-			insertionOffset = textContainer.childNodes.length;
-		}
+			let newSpan = createSpanText(segment.text, {
+				id: cuid(),
+				partial: String(segment.isPartial),
+			});
 
-		let currentSpan: HTMLSpanElement | null = null;
+			if (startOffset === 0 && startContainer.parentElement === currentParagraph.firstChild) {
+				console.log("insertion point at beginning of paragraph");
+				currentParagraph.insertBefore(newSpan, currentParagraph.firstChild);
+			} else if (
+				startOffset ===
+				(startContainer.nodeType === Node.TEXT_NODE
+					? (startContainer as Text).length
+					: startContainer.childNodes.length)
+			) {
+				if (
+					(startContainer.parentNode.nodeName === "SPAN" && !startContainer.parentNode.nextSibling) ||
+					currentParagraph === startContainer
+				) {
+					console.log("insertion point at end of paragraph");
+					currentParagraph.appendChild(newSpan);
+				} else if (startContainer.parentNode.nodeName === "SPAN" && startContainer.parentNode.nextSibling) {
+					console.log("insertion point at the end of span element");
+					currentParagraph.insertBefore(newSpan, startContainer.parentElement.nextSibling);
+				}
+			} else if (startContainer.nodeType === Node.TEXT_NODE) {
+				console.log("insertion point inside text node");
 
-		for (const segment of newTranscriptions.segments) {
-			if (!currentSpan || !segment.isPartial) {
-				// Create a new span
-				currentSpan = createSpanText(segment.text, {
+				let currentSpan =
+					startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentElement : (startContainer as HTMLElement);
+
+				const splitIndex = startOffset;
+				const firstHalf = startContainer.textContent.slice(0, splitIndex);
+				const secondHalf = startContainer.textContent.slice(splitIndex);
+
+				currentSpan.textContent = firstHalf;
+				const secondSpan = createSpanText(secondHalf, {
 					id: cuid(),
-					partial: String(segment.isPartial),
+					partial: String(false),
 				});
 
-				// Insert the new span
-				if (insertionNode.nodeType === Node.TEXT_NODE) {
-					const parentNode = insertionNode.parentNode;
-					const newTextNode = insertionNode.splitText(insertionOffset);
-					parentNode.insertBefore(currentSpan, newTextNode);
-				} else {
-					insertionNode.insertBefore(currentSpan, insertionNode.childNodes[insertionOffset]);
-				}
-
-				// Update insertion point
-				insertionNode = currentSpan;
-				insertionOffset = currentSpan.textContent.length;
+				currentSpan.after(newSpan);
+				newSpan.after(secondSpan);
 			} else {
-				// Update existing span
-				currentSpan.textContent = segment.text;
-				currentSpan.dataset.partial = String(segment.isPartial);
-				insertionOffset = currentSpan.textContent.length;
-				// if (currentSpan && !segment.isPartial) {
-				// 	currentSpan = null;
-				// }
-			}
-		}
+				console.log("Selection not in a span element");
 
-		// Update the selection to the end of the inserted text
-		if (currentSpan) {
-			const range = document.createRange();
-			range.setStart(currentSpan, currentSpan.textContent.length);
-			range.setEnd(currentSpan, currentSpan.textContent.length);
+				if (startContainer.nodeName !== "SPAN" && startContainer === currentParagraph && lastEditedElementRef.current) {
+					console.log("inserting after", lastEditedElementRef.current, newSpan);
+					lastEditedElementRef.current.after(newSpan);
+				} else {
+					currentParagraph.appendChild(newSpan);
+				}
+			}
+
+			lastEditedElementRef.current = newSpan;
+
+			const newRange = document.createRange();
+			newRange.setStartAfter(newSpan);
+			newRange.collapse(false);
 			selection.removeAllRanges();
-			selection.addRange(range);
+			selection.addRange(newRange);
 		}
 	};
 
-	const appendTranscripts = (
-		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
-	) => {
+	const appendTranscripts = (newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
 
@@ -379,8 +418,7 @@ export const RecordingTranscriptions = (props: Props) => {
 			}
 
 			const hasSpanChild = lastChild.lastChild ? lastChild.lastChild?.nodeName === "SPAN" : false;
-			const isPartial =
-				hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
+			const isPartial = hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
 
 			if (hasSpanChild && isPartial) {
 				const lastText = lastChild.lastChild as HTMLSpanElement;
@@ -398,74 +436,12 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
-	const isCursorInContainer = (container: HTMLElement) => {
-		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0) return false;
-
-		try {
-			const range = selection.getRangeAt(0);
-			return container.contains(range.commonAncestorContainer);
-		} catch (_) {
-			return false;
-		}
-	};
-
-	const getCursorPosition = (container: HTMLElement) => {
-		const selection = window.getSelection();
-		if (!selection || selection.rangeCount === 0) return null;
-
-		const range = selection.getRangeAt(0);
-		if (!container.contains(range.commonAncestorContainer)) return null;
-
-		let node = range.startContainer;
-		let offset = range.startOffset;
-
-		// If current node is an html element node, find the first text node
-		if (node.nodeType === Node.ELEMENT_NODE) {
-			const textNodes = Array.from(node.childNodes).filter(
-				(child) => child.nodeType === Node.TEXT_NODE,
-			);
-			if (textNodes.length > 0) {
-				node = textNodes[0];
-				offset = 0;
-			}
-		}
-
-		while (node && node.parentNode !== container) {
-			node = node.parentNode;
-		}
-
-		return { node, offset };
-	};
-
 	// Prevent default behavior of inserting <br> in empty paragraphs
 	const handleKeyDown = (event: KeyboardEvent) => {
 		if (event.key === "Enter") {
 			event.preventDefault();
-			insertLineBreakAfterSelection();
+			insertLineBreak();
 		}
-	};
-
-	const isRelevantElement = (
-		node: Node,
-	): node is HTMLParagraphElement | HTMLHeadingElement | HTMLBRElement =>
-		["P", "SPAN", "H1", "BR", "#text"].includes(node.nodeName);
-
-	const hasEmptyParentElement = (node: Node) =>
-		node.parentElement &&
-		node.parentElement.tagName === "SPAN" &&
-		node.parentElement.textContent?.trim() === "";
-
-	const isElementEmpty = (element: HTMLElement) =>
-		element.nodeName === "SPAN" &&
-		(element.textContent?.trim() === "" || element.innerHTML === "<br>");
-
-	const removeEmptyElement = (element: HTMLElement) => {
-		if (element.parentNode) {
-			element.parentNode.removeChild(element);
-			return true;
-		}
-		return false;
 	};
 
 	const createTranscriptContentShape = (element: HTMLElement, order: number): TranscriptContent => {
@@ -525,14 +501,6 @@ export const RecordingTranscriptions = (props: Props) => {
 		replaceSearchResults(replaceText, searchText, replaceAll);
 	};
 
-	const pauseDictation = () => {
-		props.onEditorModeChange(EditorMode.EDITING);
-	};
-
-	const resumeDictation = () => {
-		props.onEditorModeChange(EditorMode.DICTATING);
-	};
-
 	const handleSaveContents = async () => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
@@ -553,7 +521,7 @@ export const RecordingTranscriptions = (props: Props) => {
 
 			if (isParagraphElement && hasChildNodes) {
 				const textElements = child.childNodes;
-				if (child.parentElement.nodeName !== "DIV") {
+				if (n_iter > 0) {
 					contents.push({
 						id: cuid(),
 						content: "",
@@ -563,7 +531,7 @@ export const RecordingTranscriptions = (props: Props) => {
 					n_iter++;
 				}
 
-				textElements.forEach((element, idx) => {
+				textElements.forEach((element) => {
 					if (
 						!element.textContent ||
 						element.textContent.length === 0 ||
@@ -613,22 +581,7 @@ export const RecordingTranscriptions = (props: Props) => {
 				/>
 
 				<div className="flex flex-col gap-2 bg-white h-full p-2 border-x border-b border-gray-200 min-h-[50vh] rounded-b-2xl drop-shadow-sm">
-					{/*
-				<TestSimulationControls
-					editorMode={props.editorMode}
-					pauseSimulation={pauseDictation}
-					resumeSimulation={resumeDictation}
-					exportToClipboard={() => copyTextContentsToClipboard(textContainerRef.current)}
-					insertIntoSelection={insertIntoSelection}
-					insertParagraph={insertLineBreak}
-					insertHeadline={insertHeadline}
-				/>
-*/}
-					<div
-						contentEditable={textContainerRef.current?.childNodes?.length > 0}
-						ref={textContainerRef}
-						className="focus:outline-none"
-					></div>
+					<div ref={textContainerRef} contentEditable={true} className="focus:outline-none"></div>
 				</div>
 			</div>
 		</>
