@@ -2,31 +2,25 @@ import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert";
 import { app } from "electron";
+import { SpeechRecognitionModelType } from "@/shared/models";
 
-export function getWhisperModelConfiguration(languageId: number) {
-  const modelName = getWhisperModelName(languageId as any);
+export function getWhisperModelConfiguration(
+  languageId: number,
+  modelType: SpeechRecognitionModelType,
+) {
   return {
-    modelPath: getWhisperModelPath(modelName),
+    modelPath: getWhisperModelPath(modelType),
     modelLanguage: languageId,
   };
 }
 
-type WhisperModelName = "tiny" | "tiny.en" | "base" | "base.en";
-
-export function getWhisperModelName(
-  modelLangugage: 0 | 1 = 0,
-): WhisperModelName {
-  switch (modelLangugage) {
-    case 0:
-      return "base";
-    case 1:
-      return "base.en";
-  }
-}
-
-export function getWhisperModelPath(modelName: WhisperModelName = "base.en") {
+export function getWhisperModelPath(
+  modelName: SpeechRecognitionModelType = "base",
+) {
   let whisperCPPModelsPath: string;
   if (app.isPackaged) {
+    // This returns the packaged application path where the models were stored.
+    // Checkout forge.config.ts (packageAfterCopy) for more information.
     whisperCPPModelsPath = path.join(
       process.resourcesPath,
     );
@@ -39,12 +33,12 @@ export function getWhisperModelPath(modelName: WhisperModelName = "base.en") {
       "models",
     );
   }
-
-  const whipserModelsByName: Record<WhisperModelName, string> = {
+  // These are the matching names of the models stored which come packaged with the application.
+  const whipserModelsByName: Record<SpeechRecognitionModelType, string> = {
     tiny: "ggml-tiny.bin",
-    "tiny.en": "ggml-tiny.en.bin",
     base: "ggml-base.bin",
-    "base.en": "ggml-base.en.bin",
+    small: "ggml-small.bin",
+    medium: "ggml-medium.bin",
   };
 
   assert.strictEqual(
@@ -52,7 +46,7 @@ export function getWhisperModelPath(modelName: WhisperModelName = "base.en") {
     "string",
     `[ getWhisperModelPath ] Invalid model name: ${modelName}`,
   );
-
+  // Merging path to models directory with current selected model to final model path.
   const whisperModelPath = path.join(
     whisperCPPModelsPath,
     whipserModelsByName[modelName],

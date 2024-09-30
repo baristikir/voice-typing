@@ -319,6 +319,47 @@ export const RecordingTranscriptions = (props: Props) => {
 			return;
 		}
 
+		insertTranscriptsIntoSelection(selection, newTranscriptions);
+	};
+
+	const appendTranscripts = (newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>) => {
+		const textContainer = textContainerRef.current;
+		if (!textContainer) return;
+
+		for (let i = 0; i < newTranscriptions.segments.length; i++) {
+			const segment = newTranscriptions.segments[i];
+
+			const lastChild = textContainer.lastChild;
+			const isParagraphElement = lastChild?.nodeName === "P";
+			if (!lastChild || !isParagraphElement) {
+				const paragraph = createNewParagraph(segment);
+				textContainer.appendChild(paragraph);
+				return;
+			}
+
+			const hasSpanChild = lastChild.lastChild ? lastChild.lastChild?.nodeName === "SPAN" : false;
+			const isPartial = hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
+
+			if (hasSpanChild && isPartial) {
+				const lastText = lastChild.lastChild as HTMLSpanElement;
+				lastText.textContent = segment.text;
+				if (!segment.isPartial) {
+					lastText.dataset.partial = "false";
+				}
+			} else {
+				const newText = createSpanText(segment.text, {
+					id: cuid(),
+					partial: String(segment.isPartial),
+				});
+				lastChild.appendChild(newText);
+			}
+		}
+	};
+
+	const insertTranscriptsIntoSelection = (
+		selection: Selection,
+		newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>,
+	) => {
 		const { startContainer, startOffset } = selection.getRangeAt(0);
 		const currentParagraph = findNearestParagraph(startContainer);
 		if (!currentParagraph) {
@@ -399,40 +440,6 @@ export const RecordingTranscriptions = (props: Props) => {
 			newRange.collapse(false);
 			selection.removeAllRanges();
 			selection.addRange(newRange);
-		}
-	};
-
-	const appendTranscripts = (newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>) => {
-		const textContainer = textContainerRef.current;
-		if (!textContainer) return;
-
-		for (let i = 0; i < newTranscriptions.segments.length; i++) {
-			const segment = newTranscriptions.segments[i];
-
-			const lastChild = textContainer.lastChild;
-			const isParagraphElement = lastChild?.nodeName === "P";
-			if (!lastChild || !isParagraphElement) {
-				const paragraph = createNewParagraph(segment);
-				textContainer.appendChild(paragraph);
-				return;
-			}
-
-			const hasSpanChild = lastChild.lastChild ? lastChild.lastChild?.nodeName === "SPAN" : false;
-			const isPartial = hasSpanChild && (lastChild.lastChild as HTMLSpanElement).dataset.partial === "true";
-
-			if (hasSpanChild && isPartial) {
-				const lastText = lastChild.lastChild as HTMLSpanElement;
-				lastText.textContent = segment.text;
-				if (!segment.isPartial) {
-					lastText.dataset.partial = "false";
-				}
-			} else {
-				const newText = createSpanText(segment.text, {
-					id: cuid(),
-					partial: String(segment.isPartial),
-				});
-				lastChild.appendChild(newText);
-			}
 		}
 	};
 

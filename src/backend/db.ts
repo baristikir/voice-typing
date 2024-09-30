@@ -48,6 +48,7 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS user_preferences (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         speech_recognition_language_id INTEGER DEFAULT 0,
+        speech_recognition_model_type TEXT CHECK(speech_recognition_model_type IN ('tiny', 'base', 'small', 'medium')) DEFAULT 'base',
         push_to_talk_enabled BOOLEAN DEFAULT FALSE,
         device_id TEXT
       )
@@ -122,13 +123,14 @@ interface IUserPreferencesDbService {
 export const UserPreferencesDbService: IUserPreferencesDbService = {
   getUserPreferences() {
     const stmt = db.prepare(`
-          SELECT speech_recognition_language_id, push_to_talk_enabled, device_id
+          SELECT speech_recognition_language_id, speech_recognition_model_type, push_to_talk_enabled, device_id
           FROM user_preferences
           WHERE id = 1 
         `);
 
     const row = stmt.get() as any;
     return {
+      speechRecognitionModelType: row.speech_recognition_model_type,
       speechRecognitionLanguageId: row.speech_recognition_language_id,
       pushToTalkEnabled: Boolean(row.push_to_talk_enabled),
       deviceId: row.device_id,
@@ -138,6 +140,7 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
     const updateStmt = db.prepare(`
           UPDATE user_preferences
           SET speech_recognition_language_id = COALESCE(?, speech_recognition_language_id),
+              speech_recognition_model_type = COALESCE(?, speech_recognition_model_type),
               push_to_talk_enabled = COALESCE(?, push_to_talk_enabled),
               device_id = COALESCE(?, device_id)
           WHERE id = 1            
@@ -146,6 +149,7 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
     db.transaction(() => {
       updateStmt.run(
         preferences.speechRecognitionLanguageId,
+        preferences.speechRecognitionModelType,
         preferences.pushToTalkEnabled,
         preferences.deviceId,
       );

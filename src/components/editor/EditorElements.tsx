@@ -108,7 +108,7 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 			}
 
 			childNodes.forEach((spanChild, j) => {
-				if (j === 0 || !childNodes[j - 1]) {
+				if (j === 0) {
 					texts.push(spanChild.textContent);
 				} else {
 					texts[texts.length - 1] += spanChild.textContent;

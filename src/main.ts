@@ -19,8 +19,11 @@ import { registerDialogIPCHandler } from "./ipc/dialogIPCHandlers";
 // Disable security warnings in devtools
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
+// Path to native addon binary which can vary in development and production.
 let addonPath;
 if (app.isPackaged) {
+  // Native addon binary is shipped with the application builds contents.
+  // 'native_modules' directory was created at build time and can be configured through `forge.config.ts`.
   addonPath = path.join(
     process.resourcesPath,
     "app.asar.unpacked",
@@ -28,6 +31,7 @@ if (app.isPackaged) {
     "addon.node",
   );
 } else {
+  // Development path to native addon binary which will needs to be build manually.
   addonPath = path.resolve(
     process.cwd(),
     "build",
@@ -38,7 +42,7 @@ if (app.isPackaged) {
 // Import the compiled C++ addon
 const addon = require(addonPath);
 assert.strictEqual(typeof addon, "object");
-assert.strictEqual(typeof addon.RealtimeSpeechToTextWhisper, "function");
+assert.strictEqual(typeof addon.SpeechToTextEngine, "function");
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require("electron-squirrel-startup")) {
@@ -72,7 +76,11 @@ const createWindow = () => {
 };
 
 app.whenReady().then(() => {
+  // Create or connect to existing SQLite db
   setupDatabase();
+  // Darwin and Windows do have specific requirements to access a systems microphone.
+  // First we check the current status and request if needed. Electron.js provides
+  // a way to prompt a request for Darwin.
   const micPermission = checkMicrophonePermission();
   if (micPermission !== "granted") {
     requestMicrophonePermission().then((isGranted) => {
@@ -84,18 +92,23 @@ app.whenReady().then(() => {
       }
     });
   }
-
+  // Initialising Whisper model configuration and application preferences
+  // from the users preferences.
   const userPreferences = UserPreferencesDbService.getUserPreferences();
   const whisperConfiguration = getWhisperModelConfiguration(
     userPreferences.speechRecognitionLanguageId,
+    userPreferences.speechRecognitionModelType,
   );
 
-  const sttWhisperStreamingModule = new addon.RealtimeSpeechToTextWhisper(
+  // Initializing native addon instance
+  const sttWhisperStreamingModule = new addon.SpeechToTextEngine(
     whisperConfiguration.modelPath,
     whisperConfiguration.modelLanguage,
   );
   assert.strictEqual(typeof sttWhisperStreamingModule, "object");
 
+  // Registering IPC-Endpoints and there handlers for renderer processes.
+  // Main purpose is to communicate with the Database and Whisper engine.
   registerDialogIPCHandler();
   registerPreferencesIPCHandler();
   registerWhisperIPCHandler(sttWhisperStreamingModule);

@@ -1,4 +1,6 @@
+export type SpeechRecognitionModelType = "tiny" | "base" | "small" | "medium";
 export interface UserPreferences {
+  speechRecognitionModelType: SpeechRecognitionModelType;
   speechRecognitionLanguageId: number;
   pushToTalkEnabled: boolean;
   deviceId?: string;

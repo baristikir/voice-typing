@@ -12,11 +12,11 @@ struct transcribed_segment {
   bool is_partial;
 };
 
-class RealtimeSpeechToTextWhisper
+class SpeechToTextEngine
 {
  public:
-  RealtimeSpeechToTextWhisper(const std::string& path_model, const char* language);
-  ~RealtimeSpeechToTextWhisper();
+  SpeechToTextEngine(const std::string& path_model, const char* language);
+  ~SpeechToTextEngine();
   void Start();
   void Stop();
   void ClearAudioData();

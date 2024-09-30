@@ -10,7 +10,7 @@ class STTAddon : public Napi::ObjectWrap<STTAddon>
   STTAddon(const Napi::CallbackInfo& info);
 
  private:
-  RealtimeSpeechToTextWhisper* instance;
+  SpeechToTextEngine* instance;
   Napi::Value Start(const Napi::CallbackInfo& info);
   Napi::Value Stop(const Napi::CallbackInfo& info);
   Napi::Value AddAudioData(const Napi::CallbackInfo& info);
@@ -25,7 +25,7 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
 {
   Napi::Function func = DefineClass(
       env,
-      "RealtimeSpeechToTextWhisper",
+      "SpeechToTextEngine",
       {InstanceMethod<&STTAddon::Start>("start"),
        InstanceMethod<&STTAddon::Stop>("stop"),
        InstanceMethod<&STTAddon::AddAudioData>("addAudioData"),
@@ -37,7 +37,7 @@ Napi::Object STTAddon::Init(Napi::Env env, Napi::Object exports)
   Napi::FunctionReference* constructor = new Napi::FunctionReference();
   *constructor = Napi::Persistent(func);
   env.SetInstanceData(constructor);
-  exports.Set("RealtimeSpeechToTextWhisper", func);
+  exports.Set("SpeechToTextEngine", func);
 
   return exports;
 }
@@ -65,7 +65,7 @@ STTAddon::STTAddon(const Napi::CallbackInfo& info)
     default:
       Napi::Error::New(info.Env(), "Expected a m_language_id of 0 or 1").ThrowAsJavaScriptException();
   }
-  instance = new RealtimeSpeechToTextWhisper(m_path, m_language);
+  instance = new SpeechToTextEngine(m_path, m_language);
 }
 
 Napi::Value STTAddon::AddAudioData(const Napi::CallbackInfo& info)
@@ -216,10 +216,10 @@ Napi::Value STTAddon::Reconfigure(const Napi::CallbackInfo& info)
   }
 
   if (instance) {
-    instance->~RealtimeSpeechToTextWhisper();
+    instance->~SpeechToTextEngine();
   }
 
-  instance = new RealtimeSpeechToTextWhisper(m_path, m_language);
+  instance = new SpeechToTextEngine(m_path, m_language);
   return Napi::Number::New(info.Env(), 1);
 }
 

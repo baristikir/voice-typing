@@ -124,7 +124,7 @@ bool read_wav(const std::string & fname, std::vector<float>& pcmf32) {
 }
 
 
-RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path_model, const char* language)
+SpeechToTextEngine::SpeechToTextEngine(const std::string& path_model, const char* language)
 : is_running(false), is_clear_audio(false), m_language(language)
 {
   fprintf(stdout, "path_model: %s\n", path_model.c_str());
@@ -132,23 +132,23 @@ RealtimeSpeechToTextWhisper::RealtimeSpeechToTextWhisper(const std::string& path
   ctx = whisper_init_from_file(path_model.c_str());
 }
 
-void RealtimeSpeechToTextWhisper::Start()
+void SpeechToTextEngine::Start()
 {
   if (!is_running) {
-    worker = std::thread(&RealtimeSpeechToTextWhisper::Process, this);
+    worker = std::thread(&SpeechToTextEngine::Process, this);
     is_running = true;
     t_last_iter = std::chrono::high_resolution_clock::now();
   }
 }
 
-void RealtimeSpeechToTextWhisper::Stop()
+void SpeechToTextEngine::Stop()
 {
   is_running = false;
   if (worker.joinable())
     worker.join();
 }
 
-void RealtimeSpeechToTextWhisper::ClearAudioData()
+void SpeechToTextEngine::ClearAudioData()
 {
   std::lock_guard<std::mutex> lock(s_mutex);
   
@@ -156,7 +156,7 @@ void RealtimeSpeechToTextWhisper::ClearAudioData()
   s_queued_pcmf32.clear();
 }
 
-RealtimeSpeechToTextWhisper::~RealtimeSpeechToTextWhisper()
+SpeechToTextEngine::~SpeechToTextEngine()
 {
   is_running = false;
   if (worker.joinable())
@@ -165,7 +165,7 @@ RealtimeSpeechToTextWhisper::~RealtimeSpeechToTextWhisper()
 }
 
 // Receives audio data in PCM f32 format from render process
-void RealtimeSpeechToTextWhisper::AddAudioData(const std::vector<float>& data)
+void SpeechToTextEngine::AddAudioData(const std::vector<float>& data)
 {
   std::lock_guard<std::mutex> lock(s_mutex);
   s_queued_pcmf32.insert(s_queued_pcmf32.end(), data.begin(), data.end());
@@ -193,7 +193,7 @@ void RealtimeSpeechToTextWhisper::AddAudioData(const std::vector<float>& data)
 //    const char * text = whisper_full_get_token_text(ctx, i, j);
 //    const float  prob = whisper_full_get_token_p(ctx, i, j);
 // Draft end ---
-std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::GetTranscribedText()
+std::vector<transcribed_segment> SpeechToTextEngine::GetTranscribedText()
 {
   std::vector<transcribed_segment> transcribed;
   std::lock_guard<std::mutex> lock(s_mutex);
@@ -202,7 +202,7 @@ std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::GetTranscribedText
   return transcribed;
 }
 
-void RealtimeSpeechToTextWhisper::Process()
+void SpeechToTextEngine::Process()
 {
   struct whisper_full_params wparams = whisper_full_default_params(whisper_sampling_strategy::WHISPER_SAMPLING_GREEDY);
   wparams.n_threads = std::min(4, (int32_t) std::thread::hardware_concurrency());
@@ -304,8 +304,8 @@ void RealtimeSpeechToTextWhisper::Process()
       transcribed_segment segment;
 
       const int n_segments = whisper_full_n_segments(ctx);
-      for (int i = 0; i < n_segments; ++i) {
-        const char* text = whisper_full_get_segment_text(ctx, i);
+      for (unsigned int segment_index = 0; segment_index < n_segments; ++segment_index) {
+        const char* text = whisper_full_get_segment_text(ctx, segment_index);
         segment.text += text;
       }
 
@@ -347,7 +347,7 @@ void RealtimeSpeechToTextWhisper::Process()
   }
 }
 
-std::vector<transcribed_segment> RealtimeSpeechToTextWhisper::TranscribeFileInput(const std::string& file_path)
+std::vector<transcribed_segment> SpeechToTextEngine::TranscribeFileInput(const std::string& file_path)
 {
   if (file_path.empty()) {
     fprintf(stdout, "[ stream_whisper ] Error: no input files specified.\n");
