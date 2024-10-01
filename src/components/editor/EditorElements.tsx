@@ -93,22 +93,15 @@ function copyTextContentsToClipboard(textContainer: HTMLDivElement) {
 	const textContainerChildren = textContainer.children;
 	const texts: string[] = [];
 
-	Array.from(textContainerChildren).forEach((child, i) => {
-		const { tagName, textContent, childNodes } = child;
-		const prevChild = textContainerChildren[i - 1];
-
-		if (tagName === "H1") {
-			texts.push(textContent);
-			return;
-		}
-
+	Array.from(textContainerChildren).forEach((child, elementIndex) => {
+		const { tagName, childNodes } = child;
 		if (tagName === "P") {
-			if (i !== 0) {
+			if (elementIndex !== 0) {
 				texts.push(" ");
 			}
 
-			childNodes.forEach((spanChild, j) => {
-				if (j === 0) {
+			childNodes.forEach((spanChild, spanElementIndex) => {
+				if (spanElementIndex === 0) {
 					texts.push(spanChild.textContent);
 				} else {
 					texts[texts.length - 1] += spanChild.textContent;
