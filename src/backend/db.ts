@@ -48,7 +48,7 @@ function initDatabase() {
       CREATE TABLE IF NOT EXISTS user_preferences (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         speech_recognition_language_id INTEGER DEFAULT 0,
-        speech_recognition_model_type TEXT CHECK(speech_recognition_model_type IN ('tiny', 'base', 'small', 'medium')) DEFAULT 'base',
+        speech_recognition_model_type TEXT CHECK(speech_recognition_model_type IN ('tiny', 'base', 'small', 'medium', 'turbo')) DEFAULT 'base',
         push_to_talk_enabled BOOLEAN DEFAULT FALSE,
         device_id TEXT
       )

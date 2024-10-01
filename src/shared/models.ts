@@ -1,4 +1,9 @@
-export type SpeechRecognitionModelType = "tiny" | "base" | "small" | "medium";
+export type SpeechRecognitionModelType =
+  | "tiny"
+  | "base"
+  | "small"
+  | "medium"
+  | "turbo";
 export interface UserPreferences {
   speechRecognitionModelType: SpeechRecognitionModelType;
   speechRecognitionLanguageId: number;
