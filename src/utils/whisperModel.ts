@@ -39,6 +39,7 @@ export function getWhisperModelPath(
     base: "ggml-base.bin",
     small: "ggml-small.bin",
     medium: "ggml-medium.bin",
+    turbo: "ggml-large-v3-turbo.bin",
   };
 
   assert.strictEqual(
