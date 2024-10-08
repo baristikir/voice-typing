@@ -4,20 +4,14 @@
 		- Insert Headline
 		- Insert Linebreak
 */
-import { ChangeEvent, memo, useEffect, useState } from "react";
+import { ChangeEvent, memo, MutableRefObject, useEffect, useState } from "react";
 import { Button } from "../ui/Button";
-import {
-	ArticleNyTimes,
-	Clipboard,
-	FloppyDisk,
-	MagnifyingGlass,
-	Paragraph,
-} from "@phosphor-icons/react";
+import { Clipboard, FloppyDisk, MagnifyingGlass, Paragraph } from "@phosphor-icons/react";
 import { EditorMode } from "./useEditor";
 import { AudioRecordingControl } from "./AudioRecordingControl";
-import { copyTextContentsToClipboard } from "./EditorElements";
 
 interface Props {
+	audioRecordRef: MutableRefObject<{ stopRecording(): void }>;
 	currentMode: EditorMode;
 	onEditorModeChange(payload: EditorMode): void;
 	onSaveContents(): void;
@@ -59,7 +53,7 @@ export const EditorControls = (props: Props) => {
 		<div className="flex flex-col items-start justify-start gap-4 py-2 bg-gray-100 p-2 rounded-t-2xl border border-gray-200">
 			<div className="flex items-center justify-between w-full">
 				<div className="flex items-center gap-2">
-					<AudioRecordingControl onEditorModeChange={props.onEditorModeChange} />
+					<AudioRecordingControl audioRecordRef={props.audioRecordRef} onEditorModeChange={props.onEditorModeChange} />
 					<Button variant="outline" size="sm" onClick={props.handleInsertLineBreak}>
 						<Paragraph className="w-4 h-4 mr-1" weight="regular" />
 						Absatz einfügen
@@ -96,33 +90,17 @@ export const EditorControls = (props: Props) => {
 			{isSearchActive ? (
 				<div className="flex items-center gap-8">
 					<div className="flex items-center gap-2">
-						<Input
-							value={searchQuery}
-							onChange={handleSearchQueryChange}
-							placeholder="Suche Eingabe"
-						/>
+						<Input value={searchQuery} onChange={handleSearchQueryChange} placeholder="Suche Eingabe" />
 						<Button size="sm" disabled={searchQuery.length <= 0} onClick={handleTriggerSearch}>
 							Suchen
 						</Button>
 					</div>
 					<div className="flex items-center gap-2">
-						<Input
-							value={replaceQuery}
-							onChange={handleReplaceQueryChange}
-							placeholder="Ersetzen Eingabe"
-						/>
-						<Button
-							size="sm"
-							disabled={replaceQuery.length <= 0}
-							onClick={() => handleTriggerReplacement(false)}
-						>
+						<Input value={replaceQuery} onChange={handleReplaceQueryChange} placeholder="Ersetzen Eingabe" />
+						<Button size="sm" disabled={replaceQuery.length <= 0} onClick={() => handleTriggerReplacement(false)}>
 							Ersetzen
 						</Button>
-						<Button
-							size="sm"
-							disabled={replaceQuery.length <= 0}
-							onClick={() => handleTriggerReplacement(true)}
-						>
+						<Button size="sm" disabled={replaceQuery.length <= 0} onClick={() => handleTriggerReplacement(true)}>
 							Alle Ersetzen
 						</Button>
 					</div>
@@ -133,11 +111,7 @@ export const EditorControls = (props: Props) => {
 };
 
 const Input = memo(
-	(props: {
-		value: string;
-		onChange(e: ChangeEvent<HTMLInputElement>): void;
-		placeholder: string;
-	}) => (
+	(props: { value: string; onChange(e: ChangeEvent<HTMLInputElement>): void; placeholder: string }) => (
 		<input
 			type="text"
 			value={props.value}
