@@ -49,6 +49,7 @@ interface Props {
 export const RecordingTranscriptions = (props: Props) => {
 	const textContainerRef = useRef<HTMLDivElement>(null);
 	const lastEditedElementRef = useRef<HTMLSpanElement>(null);
+	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	// Sync with db contents on startup
 	useEffect(() => {
@@ -72,6 +73,7 @@ export const RecordingTranscriptions = (props: Props) => {
 
 			let newTranscriptions = await getLatestTranscribedText();
 			if (!newTranscriptions) return;
+			console.log("segment:", newTranscriptions);
 			insertTranscripts(newTranscriptions);
 		}, TRANSCRIPTION_RATE_IN_MS);
 
@@ -254,14 +256,6 @@ export const RecordingTranscriptions = (props: Props) => {
 		selection.addRange(newRange);
 	};
 
-	const insertHeadline = (textContent: string) => {
-		const textContainer = textContainerRef.current;
-		if (!textContainer) return;
-
-		const h1 = createHeadline1(textContent, { id: cuid() });
-		textContainer.appendChild(h1);
-	};
-
 	const initContents = (contents: TranscriptContent[]) => {
 		const textContainer = textContainerRef.current;
 
@@ -350,6 +344,8 @@ export const RecordingTranscriptions = (props: Props) => {
 				const newText = createSpanText(segment.text, {
 					id: cuid(),
 					partial: String(segment.isPartial),
+					t0: String(segment.startTime),
+					t1: String(segment.endTime),
 				});
 				lastChild.appendChild(newText);
 			}
@@ -577,6 +573,7 @@ export const RecordingTranscriptions = (props: Props) => {
 			<div></div>
 			<div className="rounded-xl p-2">
 				<EditorControls
+					audioRecordRef={audioRecordRef}
 					currentMode={props.editorMode}
 					onEditorModeChange={props.onEditorModeChange}
 					onSaveContents={handleSaveContents}

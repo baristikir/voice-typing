@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { MutableRefObject, useState } from "react";
 import { RecorderProcessorMessageData } from "./RecordingTranscriptions";
 import { Button } from "../ui/Button";
 import { assert } from "../utils/assert";
@@ -9,12 +9,12 @@ import { useAtomValue } from "jotai";
 import { selectedAudioDeviceAtom } from "@/state/audioAtoms";
 
 interface Props {
+	audioRecordRef: MutableRefObject<{ stopRecording: () => void }>;
 	onEditorModeChange(payload: EditorMode): void;
 }
 export const AudioRecordingControl = (props: Props) => {
 	const deviceId = useAtomValue(selectedAudioDeviceAtom);
 	const [isRecording, setIsRecording] = useState(false);
-	const audioRecordRef = useRef<{ stopRecording: () => void }>(null);
 
 	const recordAudio = async () => {
 		props.onEditorModeChange(EditorMode.DICTATING);
@@ -67,7 +67,7 @@ export const AudioRecordingControl = (props: Props) => {
 				audioContext.close();
 			};
 
-			audioRecordRef.current = {
+			props.audioRecordRef.current = {
 				stopRecording,
 			};
 			setIsRecording(true);
@@ -78,9 +78,9 @@ export const AudioRecordingControl = (props: Props) => {
 
 	const pauseAudio = () => {
 		console.log("[ pauseAudio ] Disconnecting audio worklet.");
-		if (audioRecordRef.current) {
-			void audioRecordRef.current.stopRecording();
-			audioRecordRef.current = null;
+		if (props.audioRecordRef.current) {
+			void props.audioRecordRef.current.stopRecording();
+			props.audioRecordRef.current = null;
 		}
 
 		setIsRecording(false);
