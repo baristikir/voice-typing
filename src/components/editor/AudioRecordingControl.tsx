@@ -18,15 +18,19 @@ export const AudioRecordingControl = (props: Props) => {
 
 	const recordAudio = async () => {
 		props.onEditorModeChange(EditorMode.DICTATING);
-		const stream = deviceId
-			? await navigator.mediaDevices.getUserMedia({
-					audio: {
-						deviceId: {
-							exact: deviceId,
-						},
+
+		let stream;
+		if (deviceId) {
+			stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					deviceId: {
+						exact: deviceId,
 					},
-				})
-			: await navigator.mediaDevices.getUserMedia({ audio: true });
+				},
+			});
+		} else {
+			stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		}
 
 		try {
 			const audioContext = new AudioContext({ sampleRate: 16000 });

@@ -49,7 +49,8 @@ function initDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         speech_recognition_language_id INTEGER DEFAULT 0,
         speech_recognition_model_type TEXT CHECK(speech_recognition_model_type IN ('tiny', 'base', 'small', 'medium', 'turbo')) DEFAULT 'base',
-        push_to_talk_enabled BOOLEAN DEFAULT FALSE,
+        speech_recognition_n_threads INTEGER DEFAULT 4,
+        speech_recognition_trigger_ms INTEGER DEFAULT 400,
         device_id TEXT
       )
     `);
@@ -123,7 +124,7 @@ interface IUserPreferencesDbService {
 export const UserPreferencesDbService: IUserPreferencesDbService = {
   getUserPreferences() {
     const stmt = db.prepare(`
-          SELECT speech_recognition_language_id, speech_recognition_model_type, push_to_talk_enabled, device_id
+          SELECT speech_recognition_language_id, speech_recognition_model_type, speech_recognition_trigger_ms, speech_recognition_n_threads, device_id
           FROM user_preferences
           WHERE id = 1 
         `);
@@ -132,7 +133,8 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
     return {
       speechRecognitionModelType: row.speech_recognition_model_type,
       speechRecognitionLanguageId: row.speech_recognition_language_id,
-      pushToTalkEnabled: Boolean(row.push_to_talk_enabled),
+      speechRecognitionTriggerMs: row.speech_recognition_trigger_ms,
+      speechRecognitionThreads: row.speech_recognition_n_threads,
       deviceId: row.device_id,
     };
   },
@@ -141,7 +143,8 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
           UPDATE user_preferences
           SET speech_recognition_language_id = COALESCE(?, speech_recognition_language_id),
               speech_recognition_model_type = COALESCE(?, speech_recognition_model_type),
-              push_to_talk_enabled = COALESCE(?, push_to_talk_enabled),
+              speech_recognition_trigger_ms = COALESCE(?, speech_recognition_trigger_ms),
+              speech_recognition_n_threads = COALESCE(?, speech_recognition_n_threads),
               device_id = COALESCE(?, device_id)
           WHERE id = 1            
         `);
@@ -150,7 +153,8 @@ export const UserPreferencesDbService: IUserPreferencesDbService = {
       updateStmt.run(
         preferences.speechRecognitionLanguageId,
         preferences.speechRecognitionModelType,
-        preferences.pushToTalkEnabled,
+        preferences.speechRecognitionTriggerMs,
+        preferences.speechRecognitionThreads,
         preferences.deviceId,
       );
     })();

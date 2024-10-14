@@ -7,7 +7,8 @@ export type SpeechRecognitionModelType =
 export interface UserPreferences {
   speechRecognitionModelType: SpeechRecognitionModelType;
   speechRecognitionLanguageId: number;
-  pushToTalkEnabled: boolean;
+  speechRecognitionTriggerMs: number;
+  speechRecognitionThreads: number;
   deviceId?: string;
 }
 

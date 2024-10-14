@@ -96,3 +96,6 @@ out/
 
 # Node-Addon-Api
 build/
+
+# Internal
+test_16k.wav

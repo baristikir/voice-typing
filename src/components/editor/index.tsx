@@ -18,11 +18,13 @@ interface Props {
 	data: QueryTranscriptByIdData;
 }
 
+// Starts the speech-to-text engine
 function startSpeechToTextService() {
 	console.log("[ Editor ]: Starting SST Service");
 	api.start();
 }
 
+// Stops the speech-to-text engine
 function stopSpeechToTextService() {
 	console.log("[ Editor ]: Stoping SST Service");
 	api.stop();
@@ -103,10 +105,7 @@ export const Editor = (props: Props) => {
 				/>
 				<div>
 					{params.get("languageId") && (
-						<StatusBar
-							editorMode={state.mode}
-							language={convertIdToLanguage(Number(params.get("languageId")))}
-						/>
+						<StatusBar editorMode={state.mode} language={convertIdToLanguage(Number(params.get("languageId")))} />
 					)}
 				</div>
 			</div>
