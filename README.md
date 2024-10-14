@@ -62,3 +62,8 @@ $ node-gyp build
 ```bash
 $ yarn start
 ```
+
+# Sources
+
+- [ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp)
+- [openai/whisper](https://github.com/openai/whisper/)

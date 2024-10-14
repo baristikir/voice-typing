@@ -39,8 +39,10 @@ jobs:
         
       - name: Download GGML models
         run: |
+          ./whisper.cpp/models/download-ggml-model.cmd tiny
           ./whisper.cpp/models/download-ggml-model.cmd base
-          ./whisper.cpp/models/download-ggml-model.cmd base.en
+          ./whisper.cpp/models/download-ggml-model.cmd small
+          ./whisper.cpp/models/download-ggml-model.cmd medium
 
       - name: Build Electron app
         run: yarn make
@@ -107,8 +109,10 @@ jobs:
 
       - name: Download GGML models
         run: |
+          ./whisper.cpp/models/download-ggml-model.sh tiny
           ./whisper.cpp/models/download-ggml-model.sh base
-          ./whisper.cpp/models/download-ggml-model.sh base.en
+          ./whisper.cpp/models/download-ggml-model.sh small
+          ./whisper.cpp/models/download-ggml-model.sh medium
 
       - name: Install system dependencies
         run: |
@@ -182,8 +186,10 @@ jobs:
 
       - name: Downlaod GGML models
         run: |
+          ./whisper.cpp/models/download-ggml-model.sh tiny
           ./whisper.cpp/models/download-ggml-model.sh base
-          ./whisper.cpp/models/download-ggml-model.sh base.en
+          ./whisper.cpp/models/download-ggml-model.sh small
+          ./whisper.cpp/models/download-ggml-model.sh medium
 
       - name: Build Electron Application
         env:

@@ -21,8 +21,10 @@ const config: ForgeConfig = {
     executableName: "voice-typing",
     extendInfo: "./resources/Info.plist",
     extraResource: [
+      "./whisper.cpp/models/ggml-tiny.bin",
       "./whisper.cpp/models/ggml-base.bin",
-      "./whisper.cpp/models/ggml-base.en.bin",
+      "./whisper.cpp/models/ggml-small.bin",
+      "./whisper.cpp/models/ggml-medium.bin",
     ],
   },
   rebuildConfig: {},
