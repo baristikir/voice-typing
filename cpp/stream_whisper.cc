@@ -215,23 +215,23 @@ std::vector<transcribed_segment> SpeechToTextEngine::GetTranscribedText() {
 
 // Experimental, do not use in real-time
 // wlt stands for word-level-timestamp
-// Custom parameters for whisper inference configuration
-struct whisper_wlt_params {
-  int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
-  int32_t max_tokens = 32;
-  int32_t audio_ctx = 512;
+// Custom parameters for whisper inference configuration:
+// struct whisper_wlt_params {
+//   int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
+//   int32_t max_tokens = 32;
+//   int32_t audio_ctx = 512;
 
-  bool translate = false;
-  bool no_context = true;
-  bool no_fallback = false;
-  bool no_timestamps = false;
-  bool use_gpy = true;
-  bool flash_attn = false;
+//   bool translate = false;
+//   bool no_context = true;
+//   bool no_fallback = false;
+//   bool no_timestamps = false;
+//   bool use_gpy = true;
+//   bool flash_attn = false;
 
-  bool split_on_word = true;
-  bool token_timestamps = true;
-  uint max_len = 1;
-};
+//   bool split_on_word = true;
+//   bool token_timestamps = true;
+//   int max_len = 1;
+// };
 
 void SpeechToTextEngine::Process() {
   struct whisper_full_params wparams = whisper_full_default_params(
