@@ -51,11 +51,15 @@ jobs:
       - name: Download GGML models
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
+            ./whisper.cpp/models/download-ggml-model.cmd tiny
             ./whisper.cpp/models/download-ggml-model.cmd base
-            ./whisper.cpp/models/download-ggml-model.cmd base.en
+            ./whisper.cpp/models/download-ggml-model.cmd small
+            ./whisper.cpp/models/download-ggml-model.cmd medium
           else
+            ./whisper.cpp/models/download-ggml-model.sh tiny
             ./whisper.cpp/models/download-ggml-model.sh base
-            ./whisper.cpp/models/download-ggml-model.sh base.en
+            ./whisper.cpp/models/download-ggml-model.sh small
+            ./whisper.cpp/models/download-ggml-model.sh medium
           fi
         shell: bash
 

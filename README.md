@@ -8,6 +8,8 @@ speech to text. The application is built using Electron.
 - [Node.js](https://nodejs.org/en/download/package-manager) > 22.0.0
 - [yarn](https://yarnpkg.com/)
 - [node-gyp](https://github.com/nodejs/node-gyp)
+- Python >= 3.12
+- C++ compiler (e.g. GCC)
 
 ## Development
 
@@ -61,6 +63,16 @@ $ node-gyp build
 
 ```bash
 $ yarn start
+```
+
+# Build the Application
+
+For platform specific information check .github/workflows scripts, where Linux,
+MacOS and Windows builds are defined. Output gets generated in /out directory
+for the current platform.
+
+```bash
+$ yarn make
 ```
 
 # Sources
