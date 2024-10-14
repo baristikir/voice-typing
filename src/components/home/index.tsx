@@ -137,10 +137,6 @@ export function HomeContent(_: Props) {
 				<div className="flex items-start justify-between w-full">
 					<div className="flex flex-col gap-2">
 						<h1 className="text-4xl font-semibold">Übersicht</h1>
-						<div className="w-72 h-9 bg-gray-100 flex items-center justify-start px-2 py-0.5 rounded-xl text-gray-500">
-							<MagnifyingGlass className="w-4 h-4 mr-2" />
-							Skript suchen..
-						</div>
 					</div>
 
 					<div className="flex items-center gap-1">
