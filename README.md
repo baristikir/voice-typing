@@ -67,6 +67,16 @@ $ yarn start
 
 # Build the Application
 
+Before building the application, make sure to download the models from the
+whisper.cpp directory.
+
+```bash
+$  ./whisper.cpp/models/download-ggml-model.sh tiny
+$  ./whisper.cpp/models/download-ggml-model.sh base
+$  ./whisper.cpp/models/download-ggml-model.sh small
+$  ./whisper.cpp/models/download-ggml-model.sh medium
+```
+
 For platform specific information check .github/workflows scripts, where Linux,
 MacOS and Windows builds are defined. Output gets generated in /out directory
 for the current platform.
