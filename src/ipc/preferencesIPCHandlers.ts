@@ -22,9 +22,6 @@ export function registerPreferencesIPCHandler() {
         true,
       );
     }
-    if ("pushToTalkEnabled" in data) {
-      assert.strictEqual(typeof data.pushToTalkEnabled === "boolean", true);
-    }
     if ("deviceId" in data) {
       assert.strictEqual(typeof data.deviceId === "string", true);
     }

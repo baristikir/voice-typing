@@ -2,7 +2,6 @@ import { useRef, useEffect } from "react";
 import { api } from "@/utils/rendererElectronAPI";
 import {
 	copyTextContentsToClipboard,
-	createHeadline1,
 	createNewParagraph,
 	createParagraph,
 	createSpanText,
@@ -24,8 +23,10 @@ import { EditorControls } from "./EditorControls";
 import cuid from "cuid";
 
 const IS_SIMULATION_MODE = false;
+// Polling speed in ms
 const TRANSCRIPTION_RATE_IN_MS = 300;
 
+// Fetches recent transcription contents from the native addon via IPC call
 async function getLatestTranscribedText() {
 	const newTranscript = await api.getTranscribedText();
 	return newTranscript;
@@ -47,10 +48,11 @@ interface Props {
 	onEditorModeChange(payload: EditorMode): void;
 }
 export const RecordingTranscriptions = (props: Props) => {
+	// Used to control editor html contents
 	const textContainerRef = useRef<HTMLDivElement>(null);
 	const lastEditedElementRef = useRef<HTMLSpanElement>(null);
 
-	// Sync with db contents on startup
+	// Sync with editor contents on startup with database state
 	useEffect(() => {
 		if (!textContainerRef.current) return;
 		if (props.contents && props.contents.length > 0) {
@@ -64,6 +66,7 @@ export const RecordingTranscriptions = (props: Props) => {
 
 		let sim_i = 1;
 		let timer = setInterval(async () => {
+			// Test purposes
 			if (IS_SIMULATION_MODE) {
 				Simulation.simulateTranscription(textContainerRef.current, sim_i);
 				sim_i++;
@@ -72,6 +75,7 @@ export const RecordingTranscriptions = (props: Props) => {
 
 			let newTranscriptions = await getLatestTranscribedText();
 			if (!newTranscriptions) return;
+			// Inserting transcribed segments into editor container
 			insertTranscripts(newTranscriptions);
 		}, TRANSCRIPTION_RATE_IN_MS);
 
@@ -106,7 +110,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		};
 	}, [props.editorMode]);
 
-	// Text Mutation Observer, for detecting text changes
+	// Overriding default behavior for Enter keyboard. Inserting paragraph elements when pressed inside the editor container
 	useEffect(() => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
@@ -150,6 +154,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		return null;
 	};
 
+	// Insert linebreak by creating new paragraph element into current selection or appending, when there is no cursor selection.
 	const insertLineBreak = () => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
@@ -166,6 +171,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		textContainer.appendChild(newParagraph);
 	};
 
+	// When inserting a new linebreak inside existing content, we need to respect the current editor structure and split accordingly, when the cursor is in between a span element.
 	const insertLineBreakAfterSelection = (range: Range) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
@@ -180,11 +186,13 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 
 		const { startOffset, startContainer } = range;
+		// Prepend new paragraph to beginning of the current paragraph selection, when the cursor position is at the start.
 		if (startOffset === 0 && startContainer === currentParagraph.firstChild) {
 			prependParagraph(currentParagraph, newParagraph);
 			return;
 		}
 
+		// Append new paragraph after the current paragraph selection.
 		if (
 			startOffset ===
 			(startContainer?.nodeType === Node.TEXT_NODE ? (startContainer as Text).length : startContainer.childNodes.length)
@@ -244,6 +252,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		resetSelectionToStart(nParagraph);
 	};
 
+	// Sets the cursor position to the start of the html element
 	const resetSelectionToStart = (node: Node) => {
 		const newRange = document.createRange();
 		newRange.setStart(node, 0);
@@ -254,14 +263,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		selection.addRange(newRange);
 	};
 
-	const insertHeadline = (textContent: string) => {
-		const textContainer = textContainerRef.current;
-		if (!textContainer) return;
-
-		const h1 = createHeadline1(textContent, { id: cuid() });
-		textContainer.appendChild(h1);
-	};
-
+	// Creating html elements from the database content.
 	const initContents = (contents: TranscriptContent[]) => {
 		const textContainer = textContainerRef.current;
 
@@ -281,13 +283,6 @@ export const RecordingTranscriptions = (props: Props) => {
 				newParagraph.appendChild(span);
 				textContainer.appendChild(newParagraph);
 			}
-			if (content.type === TranscriptContentType.Headline1) {
-				const headline = createHeadline1(content.content, {
-					id: String(content.id),
-					order: String(content.order),
-				});
-				textContainer.appendChild(headline);
-			}
 			if (content.type === TranscriptContentType.Linebreak) {
 				// We are using the margin of a paragraph to render line breaks,
 				// this will help making editor changes easier,
@@ -298,6 +293,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
+	// When inserting transcripts, we only care about the cursor position inside the editor container. This function checks if the current selection is inside the editor.
 	const isSelectionInEditor = () => {
 		const selection = window.getSelection();
 		const textContainer = textContainerRef.current;
@@ -322,6 +318,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		insertTranscriptsIntoSelection(selection, newTranscriptions);
 	};
 
+	// Append new paragraph/span element with transcript contents to the end of the current paragraph.
 	const appendTranscripts = (newTranscriptions: Awaited<ReturnType<typeof api.getTranscribedText>>) => {
 		const textContainer = textContainerRef.current;
 		if (!textContainer) return;
@@ -364,6 +361,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		const currentParagraph = findNearestParagraph(startContainer);
 		if (!currentParagraph) {
 			console.log("No closest paragraph node was found.", currentParagraph, startContainer);
+			appendTranscripts(newTranscriptions);
 			return;
 		}
 
@@ -371,7 +369,6 @@ export const RecordingTranscriptions = (props: Props) => {
 			const segment = newTranscriptions.segments[i];
 			const lastChild = lastEditedElementRef.current;
 			if (lastChild?.dataset?.partial === "true") {
-				console.log("last edited child is partial");
 				const currentSpan = lastChild as HTMLSpanElement;
 				currentSpan.textContent = segment.text;
 				if (!segment.isPartial) {
@@ -386,7 +383,6 @@ export const RecordingTranscriptions = (props: Props) => {
 			});
 
 			if (startOffset === 0 && startContainer.parentElement === currentParagraph.firstChild) {
-				console.log("insertion point at beginning of paragraph");
 				currentParagraph.insertBefore(newSpan, currentParagraph.firstChild);
 			} else if (
 				startOffset ===
@@ -398,15 +394,11 @@ export const RecordingTranscriptions = (props: Props) => {
 					(startContainer.parentNode.nodeName === "SPAN" && !startContainer.parentNode.nextSibling) ||
 					currentParagraph === startContainer
 				) {
-					console.log("insertion point at end of paragraph");
 					currentParagraph.appendChild(newSpan);
 				} else if (startContainer.parentNode.nodeName === "SPAN" && startContainer.parentNode.nextSibling) {
-					console.log("insertion point at the end of span element");
 					currentParagraph.insertBefore(newSpan, startContainer.parentElement.nextSibling);
 				}
 			} else if (startContainer.nodeType === Node.TEXT_NODE) {
-				console.log("insertion point inside text node");
-
 				let currentSpan =
 					startContainer.nodeType === Node.TEXT_NODE ? startContainer.parentElement : (startContainer as HTMLElement);
 
@@ -423,10 +415,7 @@ export const RecordingTranscriptions = (props: Props) => {
 				currentSpan.after(newSpan);
 				newSpan.after(secondSpan);
 			} else {
-				console.log("Selection not in a span element");
-
 				if (startContainer.nodeName !== "SPAN" && startContainer === currentParagraph && lastEditedElementRef.current) {
-					console.log("inserting after", lastEditedElementRef.current, newSpan);
 					lastEditedElementRef.current.after(newSpan);
 				} else {
 					currentParagraph.appendChild(newSpan);
@@ -451,6 +440,8 @@ export const RecordingTranscriptions = (props: Props) => {
 		}
 	};
 
+	// Create database compatible shapes for transcript contents
+	// HTML -> JS - converts html elements into objects, which are saved to the database later.
 	const createTranscriptContentShape = (element: HTMLElement, order: number): TranscriptContent => {
 		const { dataset } = element;
 		const elementType = element.nodeName.toLowerCase();
@@ -461,13 +452,9 @@ export const RecordingTranscriptions = (props: Props) => {
 			case "span":
 				contentType = TranscriptContentType.Text;
 				break;
-			case "h1":
-				contentType = TranscriptContentType.Headline1;
-				break;
-			case "br":
-				contentType = TranscriptContentType.Linebreak;
-				textContent = "\n";
-				break;
+			// case "h1":
+			// 	contentType = TranscriptContentType.Headline1;
+			// 	break;
 		}
 
 		return {
@@ -478,6 +465,7 @@ export const RecordingTranscriptions = (props: Props) => {
 		};
 	};
 
+	// Highlighting html elements that match a search query inside the editor content.
 	const highlightSearchResults = (query: string) => {
 		const textContainer = textContainerRef.current;
 		if (!query || !textContainerRef.current) return;

@@ -10,10 +10,13 @@ import { LoadingSectionspinner } from "../ui/LoadingSpinner";
 import { useSetAtom } from "jotai";
 import { handleUpdateAudioDeviceAtom } from "@/state/audioAtoms";
 import { UserPreferences } from "@/shared/models";
+import { ImportWarningDialog } from "../editor/ImportWarningDialog";
 
+// Loads transcripts data from db on initial load.
 function useDbTranscripts() {
 	const [data, setData] = useState<QueryTranscriptsData>();
 	const queryTranscripts = async () => {
+		// Data is provided by IPC call
 		const result = await api.queryTranscripts();
 		setData(result);
 	};
@@ -32,10 +35,12 @@ function useDbTranscripts() {
 	};
 }
 
+// Loads user preferences from the database on initial load
 function useDbUserPreferences() {
 	const [data, setData] = useState<QueryUserPreferencesData>();
 	const [isLoading, setLoading] = useState(true);
 	const queryUserPreferences = async () => {
+		// Data is provided by IPC call
 		const result = await api.getUserPreferences();
 		setLoading(false);
 		setData(result);
@@ -63,15 +68,14 @@ function useDbUserPreferences() {
 
 interface Props {}
 export function HomeContent(_: Props) {
-	const { data: transcriptsData } = useDbTranscripts();
-	const {
-		data: preferencesData,
-		isLoading,
-		update: updatePreferencesData,
-	} = useDbUserPreferences();
 	const navigate = useNavigate();
+	// Fetch db datas
+	const { data: transcriptsData } = useDbTranscripts();
+	const { data: preferencesData, isLoading, update: updatePreferencesData } = useDbUserPreferences();
+
 	const setDeviceId = useSetAtom(handleUpdateAudioDeviceAtom);
 	const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+	const [isImportWarningOpen, setIsImportWarningOpen] = useState(false);
 	const [isImportingFile, setIsImportingFile] = useState(false);
 
 	useEffect(() => {
@@ -82,8 +86,10 @@ export function HomeContent(_: Props) {
 
 	const handleOpenSettingsDialog = () => setIsSettingsDialogOpen(true);
 	const handleImportFileDialog = async () => {
+		// File selection is provided by Electron via an API which has to be called from the main process.
 		const filePath = await api.openDialog({
 			properties: ["openFile"],
+			// Enabling selection for only .wav files, since its required for whisper to work with.
 			filters: [{ name: "Audio", extensions: ["wav"] }],
 			title: "Audiodatei Importieren",
 		});
@@ -94,13 +100,21 @@ export function HomeContent(_: Props) {
 
 		try {
 			const transcribedSegments = await api.transcribeFileInput(filePath.filePaths[0]);
+			if (!transcribedSegments.segments || transcribedSegments.segments.length === 0) {
+				// Update loading UI
+				setIsImportingFile(false);
+				// Transcription failed, show warning dialog with audio file criterias
+				setIsImportWarningOpen(true);
+				return;
+			}
+
 			if (transcribedSegments) {
+				// Update loading UI
 				setIsImportingFile(false);
 
+				// Create new transcript in db and navigate to editor view
 				const data = await api.createTranscript("Untitled", transcribedSegments);
-				navigate(
-					`transcripts/${String(data.id)}?languageId=${String(preferencesData.speechRecognitionLanguageId)}`,
-				);
+				navigate(`transcripts/${String(data.id)}?languageId=${String(preferencesData.speechRecognitionLanguageId)}`);
 			}
 		} catch (error) {
 			setIsImportingFile(false);
@@ -114,9 +128,7 @@ export function HomeContent(_: Props) {
 				<div className="z-[999] absolute inset-0 w-full h-full bg-black/70 flex flex-col items-center justify-center gap-2 text-white">
 					<LoadingSectionspinner size="sm" />
 					<div className="flex flex-col items-center max-w-md">
-						<h1 className="text-xl text-center font-semibold">
-							Importierte Datei wird transkribiert...
-						</h1>
+						<h1 className="text-xl text-center font-semibold">Importierte Datei wird transkribiert...</h1>
 						<h3 className="font-normal">(Anwendung nicht schliessen!)</h3>
 					</div>
 				</div>
@@ -132,6 +144,7 @@ export function HomeContent(_: Props) {
 					</div>
 
 					<div className="flex items-center gap-1">
+						<ImportWarningDialog isOpen={isImportWarningOpen} setIsOpen={setIsImportWarningOpen} />
 						{!isLoading && (
 							<SettingsDialog
 								defaultValues={preferencesData}
@@ -187,11 +200,7 @@ const CreateNewDictation = () => {
 
 	return (
 		<>
-			<CreateNewTranscriptDialog
-				isOpen={isOpen}
-				setIsOpen={setIsOpen}
-				onSubmit={handleCreateNewDictation}
-			/>
+			<CreateNewTranscriptDialog isOpen={isOpen} setIsOpen={setIsOpen} onSubmit={handleCreateNewDictation} />
 			<button
 				type="button"
 				onClick={handleOpenDialog}
@@ -227,9 +236,7 @@ const DictationCard = (props: DictationCardProps) => {
 			<div className="flex flex-col items-start gap-1">
 				<span className="text-gray-500 text-sm">Zuletzt bearbeitet</span>
 				<div className="flex items-start bg-gray-100 rounded-lg px-1.5 py-0.5 justify-center shrink-0">
-					<span className="text-gray-600 text-sm font-medium ">
-						{dayjs(props.lastEdited).fromNow()}
-					</span>
+					<span className="text-gray-600 text-sm font-medium ">{dayjs(props.lastEdited).fromNow()}</span>
 				</div>
 			</div>
 		</Link>

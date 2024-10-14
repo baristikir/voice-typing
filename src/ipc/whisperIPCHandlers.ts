@@ -9,7 +9,12 @@ import { TranscribedSegments } from "@/shared/ipcPayloads";
 type STTEngineModule = {
   start: () => void;
   stop: () => void;
-  reconfigure: (mPath: string, mLanguageId: number) => number;
+  reconfigure: (data: {
+    language_id: number;
+    model_path: string;
+    trigger_ms: number;
+    n_threads: number;
+  }) => number;
   addAudioData: (data: Float32Array) => void;
   clearAudioData: () => void;
   getTranscribedText: () => string;
@@ -29,16 +34,36 @@ export function registerWhisperIPCHandler(
     if ("mType" in data) {
       assert.strictEqual(typeof data.mType === "string", true);
     }
+    if ("mThreads" in data) {
+      assert.strictEqual(typeof data.mThreads === "number", true);
+    }
+    if ("mTriggerMs" in data) {
+      assert.strictEqual(typeof data.mTriggerMs === "number", true);
+    }
 
+    console.log(data);
     // Whisper model path for the selected model type
     const whisperModelPath = getWhisperModelPath(data.mType);
 
+    // Update database to match users settings
     const updatedPreferences = UserPreferencesDbService.updateUserPreferences({
       speechRecognitionLanguageId: data.mLanguageId,
       speechRecognitionModelType: data.mType,
+      speechRecognitionThreads: data.mThreads,
+      speechRecognitionTriggerMs: data.mTriggerMs,
     });
 
-    sttEngineModule.reconfigure(whisperModelPath, data.mLanguageId);
+    // Check STTAddon::Reconfigure for more details
+    sttEngineModule.reconfigure({
+      language_id: data.mLanguageId,
+      model_path: whisperModelPath,
+      trigger_ms: data.mTriggerMs
+        ? data.mTriggerMs
+        : updatedPreferences.speechRecognitionTriggerMs,
+      n_threads: data.mThreads
+        ? data.mThreads
+        : updatedPreferences.speechRecognitionThreads,
+    });
     return updatedPreferences;
   });
   ipcMain.handle(WHISPER_IPC_CHANNELS["WHISPER_START"], (_event, _data) => {
@@ -75,7 +100,8 @@ export function registerWhisperIPCHandler(
   ipcMain.handle(
     WHISPER_IPC_CHANNELS["WHISPER_TRANSCRIBE_FILE_INPUT"],
     (_event, data) => {
-      return sttEngineModule.transcribeFileInput(data);
+      const segments = sttEngineModule.transcribeFileInput(data);
+      return segments;
     },
   );
 }

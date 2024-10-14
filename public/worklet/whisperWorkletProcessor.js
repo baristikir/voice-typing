@@ -1,6 +1,5 @@
 /**
  * References:
- * - https://github.com/guest271314/audioInputToWav/blob/master/index.html
  * - https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor#processing_audio
  */
 
@@ -38,7 +37,6 @@ class RecorderProcessor extends AudioWorkletProcessor {
     // Only Mono-Channel Support for Whisper Model
     this.recordChannelCount = 1;
 
-    /** @type {number[][]} */
     this.buffer = [];
     for (let i = 0; i < this.recordChannelCount; i++) {
       this.buffer[i] = [];

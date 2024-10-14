@@ -4,7 +4,7 @@ import { api } from "@/utils/rendererElectronAPI";
 import { X } from "@phosphor-icons/react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { EventHandler, useEffect, useState } from "react";
 
 export enum WhisperModelLanguage {
 	English = "en",
@@ -41,6 +41,8 @@ export const SettingsDialog = (props: Props) => {
 	const [selectedDeviceId, setSelectedDeviceId] = useState(props.defaultValues.deviceId);
 	const [language, setLanguage] = useState(convertIdToLanguage(props.defaultValues.speechRecognitionLanguageId ?? 0));
 	const [modelType, setModelType] = useState(props.defaultValues.speechRecognitionModelType);
+	const [threads, setThreads] = useState(props.defaultValues.speechRecognitionThreads);
+	const [triggerMs, setTriggerMs] = useState(props.defaultValues.speechRecognitionTriggerMs);
 
 	const handleSubmit = async () => {
 		let data: UserPreferences;
@@ -55,32 +57,76 @@ export const SettingsDialog = (props: Props) => {
 		// Save language or model type (only when changed)
 		const defaultModelType = props.defaultValues.speechRecognitionModelType;
 		const defaultLanguage = convertIdToLanguage(props.defaultValues.speechRecognitionLanguageId);
-		if ((language && language !== defaultLanguage) || (modelType && modelType !== defaultModelType)) {
-			// Convert into database
+		const defaultThreads = props.defaultValues.speechRecognitionThreads;
+		const defaultTriggersMs = props.defaultValues.speechRecognitionTriggerMs;
+		if (
+			(language && language !== defaultLanguage) ||
+			(modelType && modelType !== defaultModelType) ||
+			(threads && threads !== defaultThreads) ||
+			(triggerMs && triggerMs !== defaultTriggersMs)
+		) {
+			// Convert into language id
 			const languageId = convertLanguageToId(language);
 			// Trigger speech to text engine reconfiguration with related whisper parameter changes via IPC call.
 			data = await api.reconfigure({
 				mLanguageId: languageId,
 				mType: modelType,
+				mThreads: threads,
+				mTriggerMs: triggerMs,
 			});
 		}
 		// Optimistic UI Update: Replaces current states with latest states from the database to avoid stale data on UI.
 		props.optimisticUpdater(data);
 	};
 
+	const handleThreadsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setThreads(Number(event.target.value));
+	};
+
+	const handleChangeTriggerMs = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setTriggerMs(Number(event.target.value));
+	};
+
 	return (
 		<Dialog.Root open={props.isOpen} onOpenChange={props.setIsOpen}>
 			<Dialog.Portal>
 				<Dialog.Overlay className="bg-black/30 data-[state=open]:animate-overlayShow fixed inset-0 z-[90]" />
-				<Dialog.Content className="no-drag data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[450px] translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white p-6 focus:outline-none z-[100]">
+				<Dialog.Content className="no-drag data-[state=open]:animate-contentShow fixed top-[50%] left-[50%] max-h-[85vh] w-[90vw] max-w-[450px] translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white p-6 focus:outline-none z-[100] overflow-auto">
 					<Dialog.Title className="text-gray-900 m-0 text-lg font-medium">Einstellungen</Dialog.Title>
 					<Dialog.Description className="text-gray-600 mt-2 mb-2 text-base leading-normal">
 						Hier können persönliche Einstellungen angepasst werden.
 					</Dialog.Description>
-					<div className="flex flex-col w-full h-auto">
+					<div className="flex flex-col w-full h-auto gap-4">
 						<AudioInputSelection value={selectedDeviceId} handleInputChange={setSelectedDeviceId} />
 						<ModelLanguageSelection value={language} handleInputChange={setLanguage} />
 						<ModelTypeSelection value={modelType} handleInputChange={setModelType} />
+						<fieldset>
+							<label htmlFor="configuration-threads">Anzahl CPU Threads für Spracherkennung</label>
+							<input
+								id="configuration-threads"
+								name="configuration-threads"
+								className="text-gray-900 block h-8 w-full rounded px-3 text-[14px] leading-none shadow-[0_0_0_1px] outline-none focus:shadow-[0_0_0_2px]"
+								value={threads}
+								onChange={handleThreadsChange}
+								type="number"
+								min={1}
+							/>
+						</fieldset>
+						<fieldset>
+							<label htmlFor="configuration-trigger">Minimum Audiolänge zur Spracherkennung</label>
+							<div className="flex items-center justify-start gap-4">
+								<input
+									id="configuration-trigger"
+									name="configuration-trigger"
+									className="text-gray-900 block h-8 w-full rounded px-3 text-[14px] leading-none shadow-[0_0_0_1px] outline-none focus:shadow-[0_0_0_2px]"
+									value={triggerMs}
+									onChange={handleChangeTriggerMs}
+									type="number"
+									min={1}
+								/>
+								<span className="w-auto whitespace-nowrap text-lg font-medium">in ms</span>
+							</div>
+						</fieldset>
 					</div>
 					<div className="mt-[25px] flex justify-end">
 						<Dialog.Close asChild>
@@ -109,7 +155,7 @@ export const SettingsDialog = (props: Props) => {
 
 const ModelLanguageSelection = (props: { value: string; handleInputChange: (value: WhisperModelLanguage) => void }) => {
 	return (
-		<fieldset className="my-[15px] h-full w-full flex flex-col gap-1">
+		<fieldset className="h-full w-full flex flex-col gap-1">
 			<label className="text-gray-900 text-base" htmlFor="language-select">
 				Sprache für die Spracherkennung
 			</label>
@@ -135,13 +181,13 @@ const ModelTypeSelection = (props: {
 	handleInputChange: (value: SpeechRecognitionModelType) => void;
 }) => {
 	return (
-		<fieldset className="my-[15px] h-full w-full flex flex-col gap-1">
-			<label className="text-gray-900 text-base" htmlFor="language-select">
+		<fieldset className="h-full w-full flex flex-col gap-1">
+			<label className="text-gray-900 text-base" htmlFor="model-select">
 				Whisper Modelart für die Spracherkennung
 			</label>
 			<select
 				className="text-gray-900 block h-8 w-full rounded px-3 text-[14px] leading-none shadow-[0_0_0_1px] outline-none focus:shadow-[0_0_0_2px]"
-				id="language-select"
+				id="model-select"
 				name="language"
 				value={props.value}
 				onChange={(event) => {
@@ -182,7 +228,7 @@ const AudioInputSelection = (props: { value: string; handleInputChange: (deviceI
 	}, []);
 
 	return (
-		<fieldset className="my-[15px] h-full w-full flex flex-col gap-1">
+		<fieldset className="h-full w-full flex flex-col gap-1">
 			<label className="text-gray-900 text-base" htmlFor="audio-input-select">
 				Audio Eingabegerät
 			</label>

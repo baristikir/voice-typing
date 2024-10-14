@@ -102,8 +102,12 @@ app.whenReady().then(() => {
 
   // Initializing native addon instance
   const sttWhisperStreamingModule = new addon.SpeechToTextEngine(
-    whisperConfiguration.modelPath,
-    whisperConfiguration.modelLanguage,
+    {
+      language_id: whisperConfiguration.modelLanguage,
+      model_path: whisperConfiguration.modelPath,
+      trigger_ms: userPreferences.speechRecognitionTriggerMs,
+      n_threads: userPreferences.speechRecognitionThreads,
+    },
   );
   assert.strictEqual(typeof sttWhisperStreamingModule, "object");
 
